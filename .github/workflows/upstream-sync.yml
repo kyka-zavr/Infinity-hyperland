@@ -16,6 +16,10 @@ permissions:
   pull-requests: write
   issues: write
 
+# gh без явного репозитория берёт remote `upstream` (hyprwm/Hyprland): закрепляем наш репозиторий для всех шагов
+env:
+  GH_REPO: ${{ github.repository }}
+
 jobs:
   sync:
     runs-on: ubuntu-latest
