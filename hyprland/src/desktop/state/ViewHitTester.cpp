@@ -26,8 +26,8 @@ CViewHitTester::CViewHitTester(const IViewStateTracker& tracker) : m_tracker(tra
     ;
 }
 
-PHLWINDOW CViewHitTester::windowAt(const Vector2D& pos, uint16_t properties, PHLWINDOW ignoreWindow) const {
-    const auto PMONITOR = State::monitorState()->query().vec(pos).run();
+PHLWINDOW CViewHitTester::windowAt(const Vector2D& pos, uint16_t properties, PHLWINDOW ignoreWindow, PHLMONITOR monitor) const {
+    const auto PMONITOR = monitor ? monitor : State::monitorState()->query().vec(pos).run();
     if (!PMONITOR)
         return nullptr;
 

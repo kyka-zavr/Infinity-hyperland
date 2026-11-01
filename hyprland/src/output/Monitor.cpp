@@ -1135,8 +1135,17 @@ void CMonitor::scheduleFrame(Aquamarine::IOutput::scheduleFrameReason reason) {
     m_output->scheduleFrame(reason);
 }
 
+// damage is computed in unzoomed coordinates, so while the Infinity plane is zoomed the whole monitor is damaged (like cursor zoom does)
+static bool infinityZoomed(const CMonitor* m) {
+    const auto WS = m->m_activeWorkspace;
+    return WS && WS->m_space && WS->m_space->algorithm() && WS->m_space->algorithm()->infinityZoom() != 1.F;
+}
+
 void CMonitor::addDamage(const pixman_region32_t* rg) {
-    if (m_cursorZoom->value() != 1.f && State::monitorState()->query().vec(Pointer::mgr()->position()).run() == m_self) {
+    if (infinityZoomed(this)) {
+        m_damage.damageEntire();
+        scheduleFrame(Aquamarine::IOutput::AQ_SCHEDULE_DAMAGE);
+    } else if (m_cursorZoom->value() != 1.f && State::monitorState()->query().vec(Pointer::mgr()->position()).run() == m_self) {
         m_damage.damageEntire();
         scheduleFrame(Aquamarine::IOutput::AQ_SCHEDULE_DAMAGE);
     } else if (m_damage.damage(rg))
@@ -1148,6 +1157,12 @@ void CMonitor::addDamage(const CRegion& rg) {
 }
 
 void CMonitor::addDamage(const CBox& box) {
+    if (infinityZoomed(this)) {
+        m_damage.damageEntire();
+        scheduleFrame(Aquamarine::IOutput::AQ_SCHEDULE_DAMAGE);
+        return;
+    }
+
     if (m_cursorZoom->value() != 1.f && State::monitorState()->query().vec(Pointer::mgr()->position()).run() == m_self) {
         m_damage.damageEntire();
         scheduleFrame(Aquamarine::IOutput::AQ_SCHEDULE_DAMAGE);

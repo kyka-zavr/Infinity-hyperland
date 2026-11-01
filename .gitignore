@@ -1,0 +1,12 @@
+# сборка
+/build/
+
+# подпроекты подтягиваются scripts/fetch-subprojects.sh
+/hyprland/subprojects/udis86/
+/hyprland/subprojects/hyprland-protocols/
+/hyprland/subprojects/tracy/
+
+# история оригинального Hyprland (для слияний upstream), в репозиторий не входит
+/hyprland/.git-upstream/
+
+*.log

@@ -1192,7 +1192,14 @@ bool CWindow::visibleOnMonitor(PHLMONITOR pMonitor) {
     if (m_isFloating)
         wbox = getFullWindowBoundingBox();
 
-    return !wbox.intersection({pMonitor->m_position, pMonitor->m_size}).empty();
+    // under the Infinity zoom the monitor shows the part of the plane that scales onto its box: [pos / zoom, (pos + size) / zoom]
+    CBox viewBox = {pMonitor->m_position, pMonitor->m_size};
+    if (m_workspace && m_workspace->m_space && m_workspace->m_space->algorithm()) {
+        if (const float ZOOM = m_workspace->m_space->algorithm()->infinityZoom(); ZOOM != 1.F)
+            viewBox = {pMonitor->m_position / ZOOM, pMonitor->m_size / ZOOM};
+    }
+
+    return !wbox.intersection(viewBox).empty();
 }
 
 void CWindow::setAnimationsToMove() {
@@ -1613,10 +1620,18 @@ void CWindow::warpCursor(bool force) {
 
     const auto BOX = layoutBox();
 
+    // windows of an Infinity workspace live on the (possibly zoomed) plane, the cursor on the screen
+    const auto TOSCREEN = [this](const Vector2D& planePoint) {
+        if (!m_workspace || !m_workspace->m_space || !m_workspace->m_space->algorithm())
+            return planePoint;
+
+        return planePoint * m_workspace->m_space->algorithm()->infinityZoom();
+    };
+
     if (*PERSISTENTWARPS && coords.x > 0 && coords.y > 0 && coords < BOX.size()) // don't warp cursor outside the window
-        Pointer::pointerController()->warpTo(BOX.pos() + coords, force);
+        Pointer::pointerController()->warpTo(TOSCREEN(BOX.pos() + coords), force);
     else
-        Pointer::pointerController()->warpTo(middle(), force);
+        Pointer::pointerController()->warpTo(TOSCREEN(middle()), force);
 }
 
 PHLWINDOW CWindow::getSwallowee() {

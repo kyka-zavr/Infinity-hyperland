@@ -83,6 +83,14 @@ namespace Layout {
         void                    endDragTarget();
 
         Config::ErrorResult     layoutMsg(const std::string_view& sv);
+        bool                    infinityActiveOnFocused() const;
+
+        // Infinity: pan the shared plane so that the window's center ends up in the middle of its monitor (no-op outside Infinity)
+        void                    centerInfinityOn(PHLWINDOW window);
+
+        // Infinity: raw pointer motion with the pan modifiers held moves the plane instead of the cursor (so it never runs into a monitor edge).
+        // delta is in screen pixels; returns true when the motion was consumed.
+        bool                    panWithMouse(const Vector2D& delta);
 
         void                    switchTargets(SP<ITarget> a, SP<ITarget> b, bool preserveFocus = true);
 
@@ -105,6 +113,11 @@ namespace Layout {
 
       private:
         UP<Supplementary::CDragStateController> m_dragStateController = makeUnique<Supplementary::CDragStateController>();
+
+        bool                                    panModsHeld() const;
+        bool                                    panInfinityEverywhere(const Vector2D& Δ);
+        Config::ErrorResult                     infinityMsg(const std::string_view& sv, PHLWORKSPACE focused);
+
     };
 }
 

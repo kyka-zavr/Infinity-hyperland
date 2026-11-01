@@ -1,4 +1,5 @@
 #include "ConfigActions.hpp"
+#include "../../../switcher/WindowSwitcher.hpp"
 #include "../parserUtils/ParserUtils.hpp"
 #include "../../../desktop/state/FocusState.hpp"
 #include "../../../desktop/state/GlobalWindowController.hpp"
@@ -1172,6 +1173,17 @@ ActionResult Actions::swapActiveWorkspaces(PHLMONITOR mon1, PHLMONITOR mon2) {
 }
 
 ActionResult Actions::layoutMessage(const std::string& msg) {
+    // Alt-Tab: opens the window switcher, or moves its selection when it is open (src/switcher)
+    if (msg == "alttab" || msg == "alttab prev") {
+        if (const auto ERR = Switcher::switcher()->trigger(msg == "alttab prev"); !ERR.empty())
+            return actionError(ERR, eActionErrorLevel::INFO, eActionErrorCode::NOT_FOUND);
+        return {};
+    }
+
+    // Infinity zoom is meant for binds like CTRL + wheel: outside Infinity it does nothing and the event goes on to the application
+    if (msg.starts_with("infinity zoom") && !g_layoutManager->infinityActiveOnFocused())
+        return SActionResult{.passEvent = true};
+
     auto ret = g_layoutManager->layoutMsg(msg);
     if (!ret)
         return std::unexpected(ret.error());

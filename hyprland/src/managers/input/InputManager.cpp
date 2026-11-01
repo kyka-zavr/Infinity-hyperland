@@ -1,4 +1,7 @@
 #include "InputManager.hpp"
+#include "../../switcher/WindowSwitcher.hpp"
+#include "../../layout/algorithm/Algorithm.hpp"
+#include "../../layout/space/Space.hpp"
 #include "../../Compositor.hpp"
 #include <aquamarine/output/Output.hpp>
 #include <cstdint>
@@ -145,6 +148,10 @@ void CInputManager::onMouseMoved(IPointer::SMotionEvent e) {
 
     const auto DELTA = *PNOACCEL == 1 ? unaccel : delta;
 
+    // Infinity: with the pan modifiers held the raw motion moves the plane, not the cursor
+    if (e.mouse && g_layoutManager->panWithMouse(DELTA))
+        return;
+
     if (e.mouse)
         recheckMouseWarpOnMouseInput();
 
@@ -171,7 +178,15 @@ void CInputManager::onMouseMoved(IPointer::SMotionEvent e) {
 }
 
 void CInputManager::onMouseWarp(IPointer::SMotionAbsoluteEvent e) {
+    const auto BEFORE = getMouseCoordsInternal();
+
     Pointer::mgr()->warpAbsolute(e.absolute, e.device);
+
+    // Infinity: absolute devices (e.g. a nested session) can't be frozen, so the cursor follows and the movement pans the plane
+    if (g_layoutManager->panWithMouse(getMouseCoordsInternal() - BEFORE)) {
+        m_lastCursorMovement.reset();
+        return;
+    }
 
     mouseMoveUnified(e.timeMs);
 
@@ -236,6 +251,8 @@ void CInputManager::mouseMoveUnified(uint32_t time, bool refocus, bool mouse, st
     Vector2D const mouseCoords        = overridePos.value_or(getMouseCoordsInternal());
     auto const     MOUSECOORDSFLOORED = mouseCoords.floor();
 
+    Switcher::switcher()->onMouseMove(mouseCoords);
+
     if (MOUSECOORDSFLOORED == m_lastCursorPosFloored && !refocus)
         return;
 
@@ -278,6 +295,9 @@ void CInputManager::mouseMoveUnified(uint32_t time, bool refocus, bool mouse, st
     // this can happen if there are no displays hooked up to Hyprland
     if (PMONITOR == nullptr)
         return;
+
+    // windows live on the (possibly zoomed) Infinity plane, layers and everything else on the screen
+    const Vector2D winCoords = planeCoords(mouseCoords, PMONITOR);
 
     if (PMONITOR->m_cursorZoom->value() != 1.f)
         g_pHyprRenderer->damageMonitor(PMONITOR);
@@ -358,9 +378,9 @@ void CInputManager::mouseMoveUnified(uint32_t time, bool refocus, bool mouse, st
 
     // check for windows that have focus priority like our permission popups
     if (!foundSurface) {
-        pFoundWindow = Desktop::viewState()->hitTest().windowAt(mouseCoords, Desktop::View::FOCUS_PRIORITY);
+        pFoundWindow = Desktop::viewState()->hitTest().windowAt(winCoords, Desktop::View::FOCUS_PRIORITY, nullptr, PMONITOR);
         if (pFoundWindow)
-            foundSurface = Desktop::viewState()->hitTest().windowSurfaceAt(mouseCoords, pFoundWindow, surfaceCoords);
+            foundSurface = Desktop::viewState()->hitTest().windowSurfaceAt(winCoords, pFoundWindow, surfaceCoords);
     }
 
     if (!foundSurface && g_pSessionLockManager->isSessionLocked()) {
@@ -485,7 +505,7 @@ void CInputManager::mouseMoveUnified(uint32_t time, bool refocus, bool mouse, st
     const auto getWindowIdeal = [&]() -> const PHLWINDOW& {
         if (!windowIdealQueried) {
             pWindowIdeal = Desktop::viewState()->hitTest().windowAt(
-                mouseCoords, Desktop::View::RESERVED_EXTENTS | Desktop::View::INPUT_EXTENTS | Desktop::View::ALLOW_FLOATING | Desktop::View::FOLLOW_MOUSE_CHECK);
+                winCoords, Desktop::View::RESERVED_EXTENTS | Desktop::View::INPUT_EXTENTS | Desktop::View::ALLOW_FLOATING | Desktop::View::FOLLOW_MOUSE_CHECK, nullptr, PMONITOR);
             windowIdealQueried = true;
         }
 
@@ -518,7 +538,7 @@ void CInputManager::mouseMoveUnified(uint32_t time, bool refocus, bool mouse, st
                 pFoundWindow = PWINDOWIDEAL;
 
             if (!pFoundWindow->m_isX11) {
-                foundSurface = Desktop::viewState()->hitTest().windowSurfaceAt(mouseCoords, pFoundWindow, surfaceCoords);
+                foundSurface = Desktop::viewState()->hitTest().windowSurfaceAt(winCoords, pFoundWindow, surfaceCoords);
                 surfacePos   = Vector2D(-1337, -1337);
             } else {
                 foundSurface = pFoundWindow->wlSurface()->resource();
@@ -565,7 +585,7 @@ void CInputManager::mouseMoveUnified(uint32_t time, bool refocus, bool mouse, st
 
         if (pFoundWindow) {
             if (!pFoundWindow->m_isX11) {
-                foundSurface = Desktop::viewState()->hitTest().windowSurfaceAt(mouseCoords, pFoundWindow, surfaceCoords);
+                foundSurface = Desktop::viewState()->hitTest().windowSurfaceAt(winCoords, pFoundWindow, surfaceCoords);
                 if (!foundSurface) {
                     foundSurface = pFoundWindow->wlSurface()->resource();
                     surfacePos   = pFoundWindow->position(Desktop::View::IGeometric::GEOMETRIC_CURRENT);
@@ -628,7 +648,7 @@ void CInputManager::mouseMoveUnified(uint32_t time, bool refocus, bool mouse, st
 
     m_emptyFocusCursorSet = false;
 
-    Vector2D surfaceLocal = surfacePos == Vector2D(-1337, -1337) ? surfaceCoords : mouseCoords - surfacePos;
+    Vector2D surfaceLocal = surfacePos == Vector2D(-1337, -1337) ? surfaceCoords : winCoords - surfacePos;
 
     if (pFoundWindow && pFoundWindow->m_isX11) // for x11 force scale zero
         surfaceLocal = surfaceLocal * pFoundWindow->m_X11SurfaceScaledBy;
@@ -656,7 +676,7 @@ void CInputManager::mouseMoveUnified(uint32_t time, bool refocus, bool mouse, st
 
     if (pFoundWindow && foundSurface == pFoundWindow->wlSurface()->resource() && !m_cursorImageOverridden) {
         const auto BOX = pFoundWindow->getWindowMainSurfaceBox();
-        if (VECNOTINRECT(mouseCoords, BOX.x, BOX.y, BOX.x + BOX.width, BOX.y + BOX.height))
+        if (VECNOTINRECT(winCoords, BOX.x, BOX.y, BOX.x + BOX.width, BOX.y + BOX.height))
             g_pHyprRenderer->setCursorFromName("left_ptr");
         else
             restoreCursorIconToApp();
@@ -665,7 +685,7 @@ void CInputManager::mouseMoveUnified(uint32_t time, bool refocus, bool mouse, st
     if (pFoundWindow) {
         // change cursor icon if hovering over border
         if (*PRESIZEONBORDER && *PRESIZECURSORICON) {
-            if (!Fullscreen::controller()->isFullscreen(pFoundWindow) && !pFoundWindow->hasPopupAt(mouseCoords))
+            if (!Fullscreen::controller()->isFullscreen(pFoundWindow) && !pFoundWindow->hasPopupAt(winCoords))
                 setCursorIconOnBorder(pFoundWindow);
             else if (m_borderIconDirection != BORDERICON_NONE) {
                 m_borderIconDirection = BORDERICON_NONE;
@@ -860,6 +880,10 @@ void CInputManager::setClickMode(eClickBehaviorMode mode) {
 
 void CInputManager::processMouseDownNormal(const IPointer::SButtonEvent& e, SP<IPointer> mouse) {
 
+    // the Alt-Tab switcher takes clicks while it is open
+    if (Switcher::switcher()->onMouseButton(e.button, e.state == WL_POINTER_BUTTON_STATE_PRESSED))
+        return;
+
     // notify the keybind manager
     static auto PPASSMOUSE        = CConfigValue<Config::INTEGER>("binds:pass_mouse_when_bound");
     const auto  PASS              = g_pKeybindManager->onMouseEvent(e, mouse);
@@ -872,8 +896,11 @@ void CInputManager::processMouseDownNormal(const IPointer::SButtonEvent& e, SP<I
     if (!PASS && !*PPASSMOUSE)
         return;
 
-    const auto mouseCoords = g_pInputManager->getMouseCoordsInternal();
-    const auto w           = Desktop::viewState()->hitTest().windowAt(mouseCoords, Desktop::View::ALLOW_FLOATING | Desktop::View::RESERVED_EXTENTS | Desktop::View::INPUT_EXTENTS);
+    const auto screenCoords = g_pInputManager->getMouseCoordsInternal();
+    const auto MONITORUNDER = State::monitorState()->query().vec(screenCoords).run();
+    const auto mouseCoords  = planeCoords(screenCoords, MONITORUNDER);
+    const auto w            = Desktop::viewState()->hitTest().windowAt(mouseCoords, Desktop::View::ALLOW_FLOATING | Desktop::View::RESERVED_EXTENTS | Desktop::View::INPUT_EXTENTS, nullptr,
+                                                                       MONITORUNDER);
 
     if (w && !m_lastFocusOnLS && !g_pSessionLockManager->isSessionLocked() && w->checkInputOnDecos(INPUT_TYPE_BUTTON, mouseCoords, e))
         return;
@@ -929,8 +956,8 @@ void CInputManager::processMouseDownNormal(const IPointer::SButtonEvent& e, SP<I
     // notify app if we didn't handle it
     g_pSeatManager->sendPointerButton(e.timeMs, e.button, e.state);
 
-    if (const auto PMON = State::monitorState()->query().vec(mouseCoords).run(); PMON != Desktop::focusState()->monitor() && PMON)
-        Desktop::focusState()->rawMonitorFocus(PMON);
+    if (MONITORUNDER && MONITORUNDER != Desktop::focusState()->monitor())
+        Desktop::focusState()->rawMonitorFocus(MONITORUNDER);
 
     if (g_pSeatManager->m_seatGrab && e.state == WL_POINTER_BUTTON_STATE_PRESSED) {
         m_hardInput = true;
@@ -2155,7 +2182,7 @@ void CInputManager::setCursorIconOnBorder(PHLWINDOW w) {
 
     // give a small leeway (10 px) for corner icon
     const auto           CORNER           = ROUNDING + BORDERSIZE + 10;
-    const auto           mouseCoords      = getMouseCoordsInternal();
+    const auto           mouseCoords      = planeCoords(getMouseCoordsInternal());
     CBox                 box              = w->getWindowMainSurfaceBox();
     eBorderIconDirection direction        = BORDERICON_NONE;
     CBox                 boxFullGrabInput = {box.x - *PEXTENDBORDERGRAB - BORDERSIZE, box.y - *PEXTENDBORDERGRAB - BORDERSIZE, box.width + 2 * (*PEXTENDBORDERGRAB + BORDERSIZE),
@@ -2312,4 +2339,17 @@ void CInputManager::onPinchEnd(IPointer::SPinchEndEvent e) {
     g_pTrackpadGestures->gestureEnd(e);
 
     PROTO::pointerGestures->pinchEnd(e.timeMs, e.cancelled);
+}
+
+Vector2D CInputManager::planeCoords(const Vector2D& screen, PHLMONITOR monitor) {
+    const auto MONITOR = monitor ? monitor : State::monitorState()->query().vec(screen).run();
+    if (!MONITOR || !MONITOR->m_activeWorkspace || !MONITOR->m_activeWorkspace->m_space || !MONITOR->m_activeWorkspace->m_space->algorithm())
+        return screen;
+
+    const float ZOOM = MONITOR->m_activeWorkspace->m_space->algorithm()->infinityZoom();
+    if (ZOOM == 1.F)
+        return screen;
+
+    // the renderer scales the plane about the origin of the whole layout (not of each monitor), so monitors show neighbouring parts of one plane
+    return screen / ZOOM;
 }

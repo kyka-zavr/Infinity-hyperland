@@ -15,3 +15,7 @@ bool CRendererHintsPassElement::needsPrecomputeBlur() {
 bool CRendererHintsPassElement::undiscardable() {
     return true;
 }
+
+bool CRendererHintsPassElement::disableSimplification() {
+    return m_data.renderModif && m_data.renderModif->enabled && !m_data.renderModif->modifs.empty();
+}

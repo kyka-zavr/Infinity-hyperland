@@ -541,6 +541,14 @@ std::vector<SP<IValue>> Values::getConfigValues() {
                 {.min = 0, .max = std::numeric_limits<int>::max()}),
 
         /*
+         * infinity:
+         */
+
+        MS<String>("infinity:zoom_mods", "Modifiers that, while held, make the mouse wheel zoom the plane in Infinity mode, e.g. \"CTRL\". Empty to disable.", "CTRL"),
+        MS<Float>("infinity:zoom_step", "Zoom factor of one wheel notch in Infinity mode.", 1.1, {.min = 1.01, .max = 2}),
+        MS<String>("infinity:pan_mods", "Modifiers that, while held, make mouse movement pan the whole plane in Infinity mode, e.g. \"SUPER ALT\". Empty to disable.", "SUPER ALT"),
+
+        /*
          * xwayland:
          */
 

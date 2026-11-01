@@ -54,8 +54,20 @@ namespace Layout {
         size_t                        tiledTargets() const;
         size_t                        floatingTargets() const;
 
+        // Infinity mode (see docs/05-infinity-canvas.md)
+        bool                          infinityActive() const;
+        void                          setInfinity(bool on);
+        void                          panInfinity(const Vector2D& Δ);
+        void                          zoomInfinity(float mult, std::optional<Vector2D> anchor = std::nullopt);
+        float                         infinityZoom() const; // 1 when the mode is off
+
       private:
+        Config::ErrorResult           infinityMsg(const std::string_view& sv);
+        void                          swapFloatingAlgo(UP<IFloatingAlgorithm>&& algo);
+
         CAlgorithm(UP<ITiledAlgorithm>&& tiled, UP<IFloatingAlgorithm>&& floating, SP<CSpace> space);
+
+        bool                     m_leavingInfinity = false;
 
         UP<ITiledAlgorithm>      m_tiled;
         UP<IFloatingAlgorithm>   m_floating;

@@ -2,6 +2,8 @@
 
 #include "FloatingAlgorithm.hpp"
 #include "TiledAlgorithm.hpp"
+#include "floating/default/DefaultFloatingAlgorithm.hpp"
+#include "floating/infinity/InfinityFloatingAlgorithm.hpp"
 #include "../target/WindowTarget.hpp"
 #include "../space/Space.hpp"
 #include "../../desktop/view/Window.hpp"
@@ -28,6 +30,10 @@ CAlgorithm::CAlgorithm(UP<ITiledAlgorithm>&& tiled, UP<IFloatingAlgorithm>&& flo
 }
 
 void CAlgorithm::addTarget(SP<ITarget> target) {
+    // in Infinity mode nothing is tiled: new windows are free-floating on the plane
+    if (infinityActive() && !target->floating())
+        target->setFloating(true);
+
     const bool SHOULD_FLOAT = target->floating();
 
     if (SHOULD_FLOAT) {
@@ -60,6 +66,10 @@ void CAlgorithm::removeTarget(SP<ITarget> target) {
 }
 
 void CAlgorithm::moveTarget(SP<ITarget> target, std::optional<Vector2D> focalPoint, bool reposition) {
+    // a window moved onto an Infinity workspace becomes free-floating too, except when leaving the mode (setInfinity)
+    if (infinityActive() && !m_leavingInfinity && !target->floating())
+        target->setFloating(true);
+
     const bool SHOULD_FLOAT = target->floating();
 
     if (SHOULD_FLOAT) {
@@ -111,7 +121,159 @@ void CAlgorithm::recenter(SP<ITarget> t) {
         m_floating->recenter(t);
 }
 
+bool CAlgorithm::infinityActive() const {
+    return dynamic_cast<Floating::CInfinityFloatingAlgorithm*>(m_floating.get());
+}
+
+// replaces the floating algorithm without letting the new one move already placed windows
+void CAlgorithm::swapFloatingAlgo(UP<IFloatingAlgorithm>&& algo) {
+    std::vector<std::pair<SP<ITarget>, CBox>> placed;
+    for (const auto& t : m_floatingTargets) {
+        if (const auto TARGET = t.lock(); TARGET)
+            placed.emplace_back(TARGET, TARGET->position());
+    }
+
+    updateFloatingAlgo(std::move(algo));
+
+    for (const auto& [target, box] : placed) {
+        if (target->position() == box)
+            continue;
+
+        target->setPositionGlobal(box);
+        target->warpPositionSize();
+    }
+}
+
+void CAlgorithm::setInfinity(bool on) {
+    if (on == infinityActive())
+        return;
+
+    if (on) {
+        std::vector<std::pair<SP<ITarget>, CBox>> tiled;
+        for (const auto& t : m_tiledTargets) {
+            const auto TARGET = t.lock();
+            if (!TARGET)
+                continue;
+
+            // the tile box includes gaps and borders: keep the window's real geometry so nothing jumps
+            const auto WINDOW = TARGET->window();
+            const auto BOX    = WINDOW ? CBox{WINDOW->position(Desktop::View::IGeometric::GEOMETRIC_GOAL), WINDOW->size(Desktop::View::IGeometric::GEOMETRIC_GOAL)} : TARGET->position();
+
+            tiled.emplace_back(TARGET, BOX);
+        }
+
+        auto  algo = makeUnique<Floating::CInfinityFloatingAlgorithm>();
+        auto* raw  = algo.get();
+
+        for (const auto& t : m_floatingTargets) {
+            if (const auto TARGET = t.lock(); TARGET)
+                raw->rememberFloatingBefore(TARGET);
+        }
+
+        swapFloatingAlgo(std::move(algo));
+
+        // tiled windows stay exactly where they are, they just become free
+        for (const auto& [target, box] : tiled) {
+            setFloating(target, true);
+            target->setPositionGlobal(box);
+            target->warpPositionSize();
+            raw->adopt(target);
+        }
+
+        return;
+    }
+
+    auto* infinity = dynamic_cast<Floating::CInfinityFloatingAlgorithm*>(m_floating.get());
+    infinity->resetView();
+
+    std::vector<SP<ITarget>> toTile;
+    for (const auto& t : m_floatingTargets) {
+        if (const auto TARGET = t.lock(); TARGET && !infinity->wasFloatingBefore(TARGET))
+            toTile.emplace_back(TARGET);
+    }
+
+    // the closest free place in the tiled layout is picked from where the window was
+    m_leavingInfinity = true;
+    for (const auto& target : toTile) {
+        const auto FOCAL = target->position().middle();
+
+        removeTarget(target);
+        g_pHyprRenderer->damageWindow(target->window());
+        target->setFloating(false);
+        moveTarget(target, FOCAL, false);
+        g_pHyprRenderer->damageWindow(target->window());
+    }
+    m_leavingInfinity = false;
+
+    swapFloatingAlgo(makeUnique<Floating::CDefaultFloatingAlgorithm>());
+}
+
+void CAlgorithm::panInfinity(const Vector2D& Δ) {
+    if (auto* infinity = dynamic_cast<Floating::CInfinityFloatingAlgorithm*>(m_floating.get()); infinity)
+        infinity->pan(Δ);
+}
+
+void CAlgorithm::zoomInfinity(float mult, std::optional<Vector2D> anchor) {
+    auto* infinity = dynamic_cast<Floating::CInfinityFloatingAlgorithm*>(m_floating.get());
+    if (!infinity)
+        return;
+
+    // the anchor is given monitor-local (default: the middle of the monitor), the zoom works in layout coordinates
+    const auto MONITOR = m_space.lock() && m_space.lock()->workspace() ? m_space.lock()->workspace()->m_monitor.lock() : nullptr;
+    infinity->zoomBy(mult, anchor.value_or(MONITOR ? MONITOR->m_size / 2.F : Vector2D{}) + (MONITOR ? MONITOR->m_position : Vector2D{}));
+}
+
+float CAlgorithm::infinityZoom() const {
+    if (const auto* infinity = dynamic_cast<const Floating::CInfinityFloatingAlgorithm*>(m_floating.get()); infinity)
+        return infinity->zoom();
+    return 1.F;
+}
+
+Config::ErrorResult CAlgorithm::infinityMsg(const std::string_view& sv) {
+    // sv is the part after "infinity"
+    const auto ARGS = std::string{sv.substr(sv.find_first_not_of(' ') == std::string_view::npos ? sv.size() : sv.find_first_not_of(' '))};
+
+    if (ARGS == "toggle") {
+        setInfinity(!infinityActive());
+        return {};
+    }
+    if (ARGS == "on" || ARGS == "off") {
+        setInfinity(ARGS == "on");
+        return {};
+    }
+    if (ARGS.starts_with("pan ")) {
+        if (!infinityActive())
+            return Config::configError("infinity pan: the mode is not active on this workspace", Config::eConfigErrorLevel::WARNING, Config::eConfigErrorCode::INVALID_STATE);
+
+        double x = 0, y = 0;
+        if (std::sscanf(ARGS.c_str() + 4, "%lf %lf", &x, &y) != 2)
+            return Config::configError("infinity pan: expected two numbers", Config::eConfigErrorLevel::ERROR, Config::eConfigErrorCode::INVALID_ARGUMENT);
+
+        panInfinity({x, y});
+        return {};
+    }
+
+    if (ARGS.starts_with("zoom ")) {
+        if (!infinityActive())
+            return Config::configError("infinity zoom: the mode is not active on this workspace", Config::eConfigErrorLevel::WARNING, Config::eConfigErrorCode::INVALID_STATE);
+
+        double mult = 0, ax = 0, ay = 0;
+        const int N = std::sscanf(ARGS.c_str() + 5, "%lf %lf %lf", &mult, &ax, &ay);
+        if ((N != 1 && N != 3) || mult <= 0)
+            return Config::configError("infinity zoom: expected <multiplier> [<anchor x> <anchor y>]", Config::eConfigErrorLevel::ERROR, Config::eConfigErrorCode::INVALID_ARGUMENT);
+
+        zoomInfinity(mult, N == 3 ? std::optional<Vector2D>{{ax, ay}} : std::nullopt);
+        return {};
+    }
+
+    return Config::configError("infinity: unknown command, expected toggle, on, off, pan <dx> <dy> or zoom <multiplier> [<ax> <ay>]", Config::eConfigErrorLevel::ERROR,
+                               Config::eConfigErrorCode::INVALID_ARGUMENT);
+}
+
 Config::ErrorResult CAlgorithm::layoutMsg(const std::string_view& sv) {
+    if (sv == "infinity" || sv.starts_with("infinity "))
+        return infinityMsg(sv.substr(sizeof("infinity") - 1));
+
     if (const auto ret = m_floating->layoutMsg(sv); !ret)
         return ret;
     return m_tiled->layoutMsg(sv);

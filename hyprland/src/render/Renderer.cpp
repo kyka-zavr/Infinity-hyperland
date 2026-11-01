@@ -1,4 +1,5 @@
 #include "Renderer.hpp"
+#include "../layout/algorithm/Algorithm.hpp"
 #include "../Compositor.hpp"
 #include "../helpers/math/Math.hpp"
 #include <algorithm>
@@ -29,6 +30,7 @@
 #include "../errorOverlay/Overlay.hpp"
 #include "../debug/Overlay.hpp"
 #include "../notification/NotificationOverlay.hpp"
+#include "../switcher/WindowSwitcher.hpp"
 #include "../layout/LayoutManager.hpp"
 #include "../layout/space/Space.hpp"
 #include "../i18n/Engine.hpp"
@@ -1178,10 +1180,23 @@ void IHyprRenderer::renderAllClientsForWorkspace(PHLMONITOR pMonitor, PHLWORKSPA
     if (preBlurQueued(pMonitor))
         m_renderPass.add(makeUnique<CPreBlurElement>());
 
+    // Infinity: the plane is zoomed, only windows are scaled (layers and the wallpaper stay as they are)
+    const float INFINITYZOOM = pWorkspace->m_space && pWorkspace->m_space->algorithm() ? pWorkspace->m_space->algorithm()->infinityZoom() : 1.F;
+    if UNLIKELY (INFINITYZOOM != 1.F) {
+        SRenderModifData zoomed = RENDERMODIFDATA;
+        zoomed.modifs.emplace_back(SRenderModifData::eRenderModifType::RMOD_TYPE_SCALE, INFINITYZOOM);
+        // the scale is about the origin of the layout; boxes are monitor-local physical pixels, so the monitor's own position has to be put back
+        zoomed.modifs.emplace_back(SRenderModifData::eRenderModifType::RMOD_TYPE_TRANSLATE, pMonitor->m_position * (INFINITYZOOM - 1.F) * pMonitor->m_scale);
+        m_renderPass.add(makeUnique<CRendererHintsPassElement>(CRendererHintsPassElement::SData{zoomed}));
+    }
+
     if UNLIKELY /* subjective? */ (Fullscreen::controller()->hasFullscreen(pWorkspace))
         renderWorkspaceWindowsFullscreen(pMonitor, pWorkspace, time);
     else
         renderWorkspaceWindows(pMonitor, pWorkspace, time);
+
+    if UNLIKELY (INFINITYZOOM != 1.F)
+        m_renderPass.add(makeUnique<CRendererHintsPassElement>(CRendererHintsPassElement::SData{RENDERMODIFDATA}));
 
     // and then special
     if UNLIKELY (pMonitor->m_specialDim->value() != 0.F) {
@@ -2177,6 +2192,9 @@ void IHyprRenderer::renderMonitor(PHLMONITOR pMonitor, bool commit) {
 
             // render IME even above the lockscreen - allow the user to use it to potentially input stuff on it.
             renderIME(pMonitor, NOW, renderBox);
+
+            // the window switcher is shown on every monitor
+            Switcher::switcher()->draw(pMonitor);
 
             if (pMonitor == Desktop::focusState()->monitor()) {
                 Notification::overlay()->draw(pMonitor);

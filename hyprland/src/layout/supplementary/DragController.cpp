@@ -2,6 +2,7 @@
 
 #include "../LayoutManager.hpp"
 #include "../space/Space.hpp"
+#include "../algorithm/Algorithm.hpp"
 
 #include "../../Compositor.hpp"
 #include "../../managers/SeatManager.hpp"
@@ -18,6 +19,14 @@
 
 using namespace Layout;
 using namespace Layout::Supplementary;
+
+// how many screen pixels one pixel of the Infinity plane takes under this target (1 outside Infinity or without zoom)
+static float planeZoomFor(SP<ITarget> target) {
+    if (!target || !target->space() || !target->space()->algorithm())
+        return 1.F;
+
+    return target->space()->algorithm()->infinityZoom();
+}
 
 static bool isResizeMode(eMouseBindMode mode) {
     return mode == MBIND_RESIZE || mode == MBIND_RESIZE_FORCE_RATIO || mode == MBIND_RESIZE_BLOCK_RATIO;
@@ -103,7 +112,7 @@ bool CDragStateController::updateDragWindow() {
     m_draggingWindowOriginalFloatSize = DRAGGINGTARGET->lastFloatingSize();
 
     if (WAS_FULLSCREEN && DRAGGINGTARGET->floating() && m_dragThresholdReached) {
-        const auto MOUSECOORDS = g_pInputManager->getMouseCoordsInternal();
+        const auto MOUSECOORDS = g_pInputManager->planeCoords(g_pInputManager->getMouseCoordsInternal());
         DRAGGINGTARGET->setPositionGlobal(CBox{MOUSECOORDS - DRAGGINGTARGET->position().size() / 2.F, DRAGGINGTARGET->position().size()});
     } else if (!DRAGGINGTARGET->floating() && m_dragMode == MBIND_MOVE) {
         Vector2D MINSIZE = DRAGGINGTARGET->minSize().value_or(Vector2D{MIN_WINDOW_SIZE, MIN_WINDOW_SIZE});
@@ -158,7 +167,8 @@ void CDragStateController::dragBegin(SP<ITarget> target, eMouseBindMode mode, st
     if (updateDragWindow())
         return;
 
-    // get the grab corner
+    // get the grab corner (the window box is in plane coordinates)
+    const auto BEGIN_PLANE_XY = g_pInputManager->planeCoords(m_beginDragXY);
     static auto RESIZECORNER = CConfigValue<Config::INTEGER>("general:resize_corner");
     if (m_forcedGrabbedCorner && *m_forcedGrabbedCorner != CORNER_NONE) {
         m_grabbedCorner = *m_forcedGrabbedCorner;
@@ -182,8 +192,8 @@ void CDragStateController::dragBegin(SP<ITarget> target, eMouseBindMode mode, st
                 Pointer::Cursor::overrideController->setOverride("sw-resize", Pointer::Cursor::CURSOR_OVERRIDE_SPECIAL_ACTION);
                 break;
         }
-    } else if (m_beginDragXY.x < m_beginDragPositionXY.x + m_beginDragSizeXY.x / 2.F) {
-        if (m_beginDragXY.y < m_beginDragPositionXY.y + m_beginDragSizeXY.y / 2.F) {
+    } else if (BEGIN_PLANE_XY.x < m_beginDragPositionXY.x + m_beginDragSizeXY.x / 2.F) {
+        if (BEGIN_PLANE_XY.y < m_beginDragPositionXY.y + m_beginDragSizeXY.y / 2.F) {
             m_grabbedCorner = CORNER_TOPLEFT;
             Pointer::Cursor::overrideController->setOverride("nw-resize", Pointer::Cursor::CURSOR_OVERRIDE_SPECIAL_ACTION);
         } else {
@@ -191,7 +201,7 @@ void CDragStateController::dragBegin(SP<ITarget> target, eMouseBindMode mode, st
             Pointer::Cursor::overrideController->setOverride("sw-resize", Pointer::Cursor::CURSOR_OVERRIDE_SPECIAL_ACTION);
         }
     } else {
-        if (m_beginDragXY.y < m_beginDragPositionXY.y + m_beginDragSizeXY.y / 2.F) {
+        if (BEGIN_PLANE_XY.y < m_beginDragPositionXY.y + m_beginDragSizeXY.y / 2.F) {
             m_grabbedCorner = CORNER_TOPRIGHT;
             Pointer::Cursor::overrideController->setOverride("ne-resize", Pointer::Cursor::CURSOR_OVERRIDE_SPECIAL_ACTION);
         } else {
@@ -243,9 +253,11 @@ void CDragStateController::dragEnd() {
 
         const auto DRAGGING_WINDOW = draggingTarget->window();
 
-        const auto MOUSECOORDS = g_pInputManager->getMouseCoordsInternal();
-        PHLWINDOW  pWindow =
-            Desktop::viewState()->hitTest().windowAt(MOUSECOORDS, Desktop::View::RESERVED_EXTENTS | Desktop::View::INPUT_EXTENTS | Desktop::View::ALLOW_FLOATING, DRAGGING_WINDOW);
+        const auto SCREENCOORDS = g_pInputManager->getMouseCoordsInternal();
+        const auto MONITORUNDER = State::monitorState()->query().vec(SCREENCOORDS).run();
+        const auto MOUSECOORDS  = g_pInputManager->planeCoords(SCREENCOORDS, MONITORUNDER);
+        PHLWINDOW  pWindow      = Desktop::viewState()->hitTest().windowAt(MOUSECOORDS, Desktop::View::RESERVED_EXTENTS | Desktop::View::INPUT_EXTENTS | Desktop::View::ALLOW_FLOATING,
+                                                                           DRAGGING_WINDOW, MONITORUNDER);
 
         if (pWindow) {
             if (pWindow->checkInputOnDecos(INPUT_TYPE_DRAG_END, MOUSECOORDS, DRAGGING_WINDOW)) {
@@ -319,8 +331,10 @@ void CDragStateController::mouseMove(const Vector2D& mousePos) {
 
     static auto TIMER = std::chrono::high_resolution_clock::now(), MSTIMER = TIMER;
 
-    const auto  DELTA     = Vector2D(mousePos.x - m_beginDragXY.x, mousePos.y - m_beginDragXY.y);
-    const auto  TICKDELTA = Vector2D(mousePos.x - m_lastDragXY.x, mousePos.y - m_lastDragXY.y);
+    // deltas are in screen pixels, windows move on the plane
+    const float ZOOM      = planeZoomFor(DRAGGINGTARGET);
+    const auto  DELTA     = Vector2D(mousePos.x - m_beginDragXY.x, mousePos.y - m_beginDragXY.y) / ZOOM;
+    const auto  TICKDELTA = Vector2D(mousePos.x - m_lastDragXY.x, mousePos.y - m_lastDragXY.y) / ZOOM;
 
     static auto SNAPENABLED = CConfigValue<Config::INTEGER>("general:snap:enabled");
 
@@ -443,8 +457,8 @@ void CDragStateController::mouseMove(const Vector2D& mousePos) {
     // get middle point
     Vector2D middle = DRAGGINGTARGET->position().middle();
 
-    // and check its monitor
-    const auto PMONITOR = State::monitorState()->query().vec(middle).run();
+    // and check its monitor (monitors are laid out on the screen, the window is on the zoomed plane)
+    const auto PMONITOR = State::monitorState()->query().vec(middle * planeZoomFor(DRAGGINGTARGET)).run();
 
     if (PMONITOR && PMONITOR->m_activeWorkspace && DRAGGINGTARGET->floating() /* If we're resizing a tiled target, don't do this */) {
         const auto WS = PMONITOR->m_activeSpecialWorkspace ? PMONITOR->m_activeSpecialWorkspace : PMONITOR->m_activeWorkspace;

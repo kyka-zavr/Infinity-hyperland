@@ -3,12 +3,18 @@
 #include "../managers/EventManager.hpp"
 #include "../managers/fullscreen/FullscreenController.hpp"
 #include "space/Space.hpp"
+#include "algorithm/Algorithm.hpp"
 #include "target/Target.hpp"
+#include "../managers/input/InputManager.hpp"
+#include "../managers/KeybindManager.hpp"
+#include "../config/ConfigValue.hpp"
 
 #include "../output/Monitor.hpp"
 #include "../Compositor.hpp"
 #include "../state/WorkspaceState.hpp"
+#include "../state/MonitorState.hpp"
 #include "../desktop/state/FocusState.hpp"
+#include "../desktop/state/ViewState.hpp"
 #include "../desktop/view/Group.hpp"
 #include "../event/EventBus.hpp"
 
@@ -55,6 +61,92 @@ void CLayoutManager::beginDragTarget(SP<ITarget> target, eMouseBindMode mode, st
     m_dragStateController->dragBegin(target, mode, forcedEdge, exclusiveDeviceGrab);
 }
 
+bool CLayoutManager::panModsHeld() const {
+    static auto PPANMODS = CConfigValue<Config::STRING>("infinity:pan_mods");
+
+    static std::string lastMods;
+    static uint32_t    mask = 0;
+    if (lastMods != *PPANMODS) {
+        lastMods = *PPANMODS;
+        mask     = g_pKeybindManager->stringToModMask(lastMods);
+    }
+
+    return mask != 0 && (g_pInputManager->getModsFromAllKBs() & mask) == mask;
+}
+
+// the plane is shared by all monitors: one pan moves every workspace that is in Infinity mode (the view lives in one place)
+bool CLayoutManager::panWithMouse(const Vector2D& delta) {
+    if ((delta.x == 0 && delta.y == 0) || m_dragStateController->target() || !panModsHeld())
+        return false;
+
+    return panInfinityEverywhere(delta);
+}
+
+// screen-space delta: the plane under a zoom of z moves by delta / z for the content to follow the pointer 1:1
+bool CLayoutManager::panInfinityEverywhere(const Vector2D& Δ) {
+    bool panned = false;
+
+    for (const auto& m : State::monitorState()->monitors()) {
+        const auto WS = m->m_activeWorkspace;
+        if (!WS || !WS->m_space || !WS->m_space->algorithm() || !WS->m_space->algorithm()->infinityActive())
+            continue;
+
+        // the view is shared: one pan moves the plane for every Infinity workspace on every monitor
+        WS->m_space->algorithm()->panInfinity(Δ / WS->m_space->algorithm()->infinityZoom());
+        panned = true;
+        break;
+    }
+
+    return panned;
+}
+
+Config::ErrorResult CLayoutManager::infinityMsg(const std::string_view& sv, PHLWORKSPACE focused) {
+    const auto FIRST = sv.find_first_not_of(' ', sizeof("infinity") - 1);
+    auto       arg   = std::string{FIRST == std::string_view::npos ? std::string_view{} : sv.substr(FIRST)};
+
+    // debugging aid: report what the pointer is over, using the same mapping and hit test as real mouse input
+    if (arg == "probe") {
+        const auto SCREEN = g_pInputManager->getMouseCoordsInternal();
+        const auto MON    = State::monitorState()->query().vec(SCREEN).run();
+        const auto PLANE  = g_pInputManager->planeCoords(SCREEN, MON);
+        const auto W      = Desktop::viewState()->hitTest().windowAt(PLANE, Desktop::View::ALLOW_FLOATING | Desktop::View::RESERVED_EXTENTS | Desktop::View::INPUT_EXTENTS, nullptr, MON);
+
+        return Config::configError(std::format("probe: screen {},{} plane {},{} window '{}'", SCREEN.x, SCREEN.y, PLANE.x, PLANE.y, W ? W->m_title : "none"),
+                                   Config::eConfigErrorLevel::INFO, Config::eConfigErrorCode::UNKNOWN);
+    }
+
+    // "zoom <mult> cursor": keep the plane point under the pointer fixed
+    if (arg.starts_with("zoom ") && arg.ends_with(" cursor")) {
+        const auto SCREEN = g_pInputManager->getMouseCoordsInternal();
+        const auto MON    = focused->m_monitor.lock();
+        const auto LOCAL  = MON ? SCREEN - MON->m_position : SCREEN;
+        arg               = std::format("{} {} {}", arg.substr(0, arg.size() - sizeof(" cursor") + 1), LOCAL.x, LOCAL.y);
+    }
+
+    // the mode follows the focused workspace and is applied to the active workspace of every monitor
+    if (arg == "toggle")
+        arg = focused->m_space->algorithm()->infinityActive() ? "off" : "on";
+
+    const auto MSG = std::format("infinity {}", arg);
+
+    auto       result = focused->m_space->layoutMsg(MSG);
+
+    for (const auto& m : State::monitorState()->monitors()) {
+        const auto WS = m->m_activeWorkspace;
+        if (!WS || WS == focused || !WS->m_space)
+            continue;
+
+        // the view is shared, pan and zoom were already applied to all workspaces once
+        if (arg.starts_with("pan ") || arg.starts_with("zoom "))
+            continue;
+
+        // other monitors may legitimately refuse
+        WS->m_space->layoutMsg(MSG);
+    }
+
+    return result;
+}
+
 void CLayoutManager::moveMouse(const Vector2D& mousePos) {
     m_dragStateController->mouseMove(mousePos);
 }
@@ -87,6 +179,29 @@ void CLayoutManager::setTargetGeom(const CBox& box, SP<ITarget> target) {
     target->space()->setTargetGeom(box, target);
 }
 
+bool CLayoutManager::infinityActiveOnFocused() const {
+    const auto MONITOR = Desktop::focusState()->monitor();
+    const auto WS      = MONITOR ? MONITOR->m_activeWorkspace : nullptr;
+    return WS && WS->m_space && WS->m_space->algorithm() && WS->m_space->algorithm()->infinityActive();
+}
+
+void CLayoutManager::centerInfinityOn(PHLWINDOW window) {
+    if (!window || !window->m_workspace || !window->m_workspace->m_space || !window->m_workspace->m_space->algorithm() || !window->m_workspace->m_monitor)
+        return;
+
+    const auto ALGO    = window->m_workspace->m_space->algorithm();
+    const auto MONITOR = window->m_workspace->m_monitor.lock();
+    if (!ALGO->infinityActive() || !MONITOR)
+        return;
+
+    // on screen a plane point p (layout coordinates) is at p * zoom, so the shift that puts the window center in the monitor middle is:
+    const auto CENTER = window->layoutBox().middle();
+    const auto Δ      = (MONITOR->m_position + MONITOR->m_size / 2.F) / ALGO->infinityZoom() - CENTER;
+
+    // the view is shared by all Infinity workspaces, including the hidden ones: a single pan is enough
+    ALGO->panInfinity(Δ);
+}
+
 Config::ErrorResult CLayoutManager::layoutMsg(const std::string_view& sv) {
 
     const auto MONITOR = Desktop::focusState()->monitor();
@@ -98,6 +213,9 @@ Config::ErrorResult CLayoutManager::layoutMsg(const std::string_view& sv) {
 
     if (!ws)
         return Config::configError("No workspace, can't target", Config::eConfigErrorLevel::ERROR, Config::eConfigErrorCode::NO_TARGET);
+
+    if (sv == "infinity" || sv.starts_with("infinity "))
+        return infinityMsg(sv, ws);
 
     return ws->m_space->layoutMsg(sv);
 }

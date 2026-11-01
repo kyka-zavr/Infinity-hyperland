@@ -275,6 +275,11 @@ void IElementRenderer::drawSurface(WP<CSurfacePassElement> element, const CRegio
         return;
     }
 
+    // the box and the clip region are laid out before render modifiers (e.g. the Infinity zoom) are applied: damage must be matched in the final space
+    auto modifiedBox = windowBox;
+    m_renderData.renderModif.applyToBox(modifiedBox);
+    m_renderData.renderModif.applyToRegion(clipRegion);
+
     // check for fractional scale surfaces misaligning the buffer size
     // in those cases it's better to just force nearest neighbor
     // as long as the window is not animated. During those it'd look weird.
@@ -324,7 +329,7 @@ void IElementRenderer::drawSurface(WP<CSurfacePassElement> element, const CRegio
                             .clipRegion            = clipRegion,
                             .currentLS             = m_data.pLS,
                         }),
-                        m_renderData.damage.copy().intersect(windowBox));
+                        m_renderData.damage.copy().intersect(modifiedBox));
         else
             drawElement(makeShared<CTexPassElement>(CTexPassElement::SRenderData{
                             .tex            = TEXTURE,
@@ -342,7 +347,7 @@ void IElementRenderer::drawSurface(WP<CSurfacePassElement> element, const CRegio
                             .clipRegion     = clipRegion,
                             .currentLS      = m_data.pLS,
                         }),
-                        m_renderData.damage.copy().intersect(windowBox));
+                        m_renderData.damage.copy().intersect(modifiedBox));
     } else {
         if (BLUR && m_data.popup)
             drawElement(makeShared<CTexPassElement>(CTexPassElement::SRenderData{
@@ -364,7 +369,7 @@ void IElementRenderer::drawSurface(WP<CSurfacePassElement> element, const CRegio
                             .clipRegion            = clipRegion,
                             .currentLS             = m_data.pLS,
                         }),
-                        m_renderData.damage.copy().intersect(windowBox));
+                        m_renderData.damage.copy().intersect(modifiedBox));
         else
             drawElement(makeShared<CTexPassElement>(CTexPassElement::SRenderData{
                             .tex            = TEXTURE,
@@ -382,7 +387,7 @@ void IElementRenderer::drawSurface(WP<CSurfacePassElement> element, const CRegio
                             .clipRegion     = clipRegion,
                             .currentLS      = m_data.pLS,
                         }),
-                        m_renderData.damage.copy().intersect(windowBox));
+                        m_renderData.damage.copy().intersect(modifiedBox));
     }
 
     g_pHyprRenderer->blend(true);

@@ -14,6 +14,8 @@ class CRendererHintsPassElement : public IPassElement {
     virtual bool        needsLiveBlur();
     virtual bool        needsPrecomputeBlur();
     virtual bool        undiscardable();
+    // bounding boxes and opaque regions of the elements are unscaled, so occlusion culling can't be trusted while a modifier is active
+    virtual bool        disableSimplification();
 
     virtual const char* passName() {
         return "CRendererHintsPassElement";

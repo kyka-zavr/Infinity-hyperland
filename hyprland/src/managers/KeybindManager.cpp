@@ -11,6 +11,8 @@
 #include "../protocols/core/DataDevice.hpp"
 #include "../errorOverlay/Overlay.hpp"
 #include "KeybindManager.hpp"
+#include "../switcher/WindowSwitcher.hpp"
+#include "../state/MonitorState.hpp"
 #include "../pointer/PointerManager.hpp"
 #include "Compositor.hpp"
 #include "eventLoop/EventLoopManager.hpp"
@@ -372,6 +374,10 @@ bool CKeybindManager::onKeyEvent(std::any event, SP<IKeyboard> pKeyboard) {
     if (keysym == XKB_KEY_Escape || internalKeysym == XKB_KEY_Escape)
         PROTO::data->abortDndIfPresent();
 
+    // the Alt-Tab switcher sees keys first: it confirms on modifier release and takes Esc, Enter and arrows while open
+    if (Switcher::switcher()->onKey(internalKeysym, e.state == WL_KEYBOARD_KEY_STATE_PRESSED))
+        return false;
+
     // handleInternalKeybinds returns true when the key should be suppressed,
     // while this function returns true when the key event should be sent
     if (!PROTO::inputCapture->isCaptured() && handleInternalKeybinds(internalKeysym))
@@ -445,6 +451,25 @@ bool CKeybindManager::onKeyEvent(std::any event, SP<IKeyboard> pKeyboard) {
 
 bool CKeybindManager::onAxisEvent(const IPointer::SAxisEvent& e, SP<IPointer> pointer) {
     const auto  MODS = g_pInputManager->getModsFromAllKBs();
+
+    // Infinity: the wheel with the zoom modifiers held zooms the plane around the cursor, every notch (no bind delay). Outside Infinity the event goes on to the app.
+    if (e.source == WL_POINTER_AXIS_SOURCE_WHEEL && e.axis == WL_POINTER_AXIS_VERTICAL_SCROLL && g_layoutManager->infinityActiveOnFocused()) {
+        static auto        PZOOMMODS = CConfigValue<Config::STRING>("infinity:zoom_mods");
+        static auto        PZOOMSTEP = CConfigValue<Config::FLOAT>("infinity:zoom_step");
+
+        static std::string lastMods;
+        static uint32_t    mask = 0;
+        if (lastMods != *PZOOMMODS) {
+            lastMods = *PZOOMMODS;
+            mask     = stringToModMask(lastMods);
+        }
+
+        if (mask != 0 && (MODS & mask) == mask) {
+            const double NOTCHES = e.deltaDiscrete != 0 ? e.deltaDiscrete / 120.0 : (e.delta > 0 ? 1.0 : -1.0);
+            g_layoutManager->layoutMsg(std::format("infinity zoom {} cursor", std::pow(sc<double>(*PZOOMSTEP), -NOTCHES)));
+            return false;
+        }
+    }
 
     static auto PDELAY = CConfigValue<Config::INTEGER>("binds:scroll_event_delay");
 
@@ -951,9 +976,11 @@ SDispatchResult CKeybindManager::changeMouseBindMode(const eMouseBindMode MODE) 
         if (g_layoutManager->dragController()->target())
             return {};
 
-        const auto      MOUSECOORDS = g_pInputManager->getMouseCoordsInternal();
-        const PHLWINDOW PWINDOW =
-            Desktop::viewState()->hitTest().windowAt(MOUSECOORDS, Desktop::View::RESERVED_EXTENTS | Desktop::View::INPUT_EXTENTS | Desktop::View::ALLOW_FLOATING);
+        const auto      SCREENCOORDS = g_pInputManager->getMouseCoordsInternal();
+        const auto      MONITORUNDER = State::monitorState()->query().vec(SCREENCOORDS).run();
+        const auto      MOUSECOORDS  = g_pInputManager->planeCoords(SCREENCOORDS, MONITORUNDER);
+        const PHLWINDOW PWINDOW      = Desktop::viewState()->hitTest().windowAt(MOUSECOORDS, Desktop::View::RESERVED_EXTENTS | Desktop::View::INPUT_EXTENTS | Desktop::View::ALLOW_FLOATING,
+                                                                                nullptr, MONITORUNDER);
 
         if (!PWINDOW)
             return SDispatchResult{.passEvent = true};

@@ -121,6 +121,8 @@ class CInputManager {
     bool               hasHeldButtons();
 
     Vector2D           getMouseCoordsInternal();
+    // screen point -> point of the (possibly zoomed) Infinity plane under it; windows are hit-tested in plane coordinates, layers in screen coordinates
+    Vector2D           planeCoords(const Vector2D& screen, PHLMONITOR monitor = nullptr);
     void               refocus(std::optional<Vector2D> overridePos = std::nullopt);
     bool               refocusLastWindow(PHLMONITOR pMonitor);
     void               simulateMouseMovement();

@@ -290,6 +290,31 @@ hl.bind(mainMod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }))
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
 hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
+-----------------------------------------
+---- INFINITY (infinite canvas, fork) ----
+-----------------------------------------
+
+-- Toggle the mode on every monitor. Windows keep their tiled places and return to them when the mode is switched off.
+hl.bind(mainMod .. " + SHIFT + SPACE", hl.dsp.layout("infinity toggle"))
+
+-- Window switcher: hold ALT, press TAB to move the selection (SHIFT+TAB goes back), release ALT to focus the window.
+-- Arrow keys and the mouse work too, ESC cancels. Works in both modes and across all workspaces.
+hl.bind("ALT + Tab",         hl.dsp.layout("alttab"))
+hl.bind("ALT + SHIFT + Tab", hl.dsp.layout("alttab prev"))
+
+-- Move the whole canvas from the keyboard (the mouse way: move the pointer with the pan modifiers held, SUPER + ALT by default)
+hl.bind(mainMod .. " + CTRL + left",  hl.dsp.layout("infinity pan 150 0"),  { repeating = true })
+hl.bind(mainMod .. " + CTRL + right", hl.dsp.layout("infinity pan -150 0"), { repeating = true })
+hl.bind(mainMod .. " + CTRL + up",    hl.dsp.layout("infinity pan 0 150"),  { repeating = true })
+hl.bind(mainMod .. " + CTRL + down",  hl.dsp.layout("infinity pan 0 -150"), { repeating = true })
+
+-- Zoom from the keyboard (the mouse way: CTRL + wheel, every notch)
+hl.bind(mainMod .. " + CTRL + equal", hl.dsp.layout("infinity zoom 1.25"), { repeating = true })
+hl.bind(mainMod .. " + CTRL + minus", hl.dsp.layout("infinity zoom 0.8"),  { repeating = true })
+
+-- Infinity options (these are the defaults):
+-- hl.config({ infinity = { pan_mods = "SUPER ALT", zoom_mods = "CTRL", zoom_step = 1.1 } })
+
 -- Laptop multimedia keys for volume and LCD brightness
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
 hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),      { locked = true, repeating = true })
