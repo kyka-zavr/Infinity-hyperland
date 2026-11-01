@@ -4,6 +4,7 @@
 
 #include "../desktop/DesktopTypes.hpp"
 #include "../render/Texture.hpp"
+#include "../render/Context.hpp"
 #include "../helpers/memory/Memory.hpp"
 #include "../helpers/math/Math.hpp"
 
@@ -36,7 +37,7 @@ namespace Switcher {
         void        onMouseMove(const Vector2D& pos); // hovering a tile selects it
 
         // drawn on every monitor
-        void        draw(PHLMONITOR monitor);
+        void        draw(Render::CRenderContext& ctx, PHLMONITOR monitor);
 
       private:
         struct SText {

@@ -11,19 +11,21 @@
 - `.github/workflows/upstream-sync.yml` раз в сутки проверяет новый стабильный релиз: чистое слияние даёт ветку, проверочную сборку на Arch и pull request; конфликты дают issue со списком файлов. Для автоматического pull request в настройках репозитория (Settings, Actions, General) должно быть включено «Allow GitHub Actions to create and approve pull requests».
 - Зависимости (hyprutils, aquamarine, hyprlang и др.) берутся из системы. Новая версия Hyprland может требовать новых версий или новых библиотек: список для Arch в `installer/arch-deps.txt` сверяется с пакетом `hyprland` при каждом обновлении.
 
-## Состояние на 2026-11-01
+## Состояние
 
-Пробное слияние **v0.57.0** (оригинал ушёл вперёд на релиз): **12 конфликтующих файлов**, 718 изменённых файлов в оригинале. Автоматически его не влить. Основная причина: в 0.57 переработана обработка клавиш (`src/managers/KeybindManager.cpp` удалён, код переехал в `src/keybinds/`), плюс изменения в рендере и вводе.
+База форка: **v0.57.0** (перенос сделан 2026-11-01 с v0.56.2).
 
-Файлы с конфликтами (наши точки встраивания в чужой код):
+Что пришлось перенести (для понимания, сколько стоит такое обновление): в 0.57 переработаны рендер (контекст `Render::CRenderContext`, сцена монитора), ввод и клавиши (`src/keybinds/`, `KeybindManager.cpp` удалён), окно (`desktop/view/Window.cpp` разбит на `desktop/view/window/*`), рабочее место (`space()` вместо `m_space`), требования к зависимостям (`hyprwire`, `hyprland-protocols` как системный пакет вместо подпроекта). Конфликтовало 12 файлов, остальное правилось по ошибкам сборки. Режим Infinity, зум, переключатель окон и установщик работают на 0.57.0, проверено во вложенном окне с двумя мониторами.
 
-- `desktop/state/ViewHitTester.{cpp,hpp}`, `desktop/view/Window.cpp`: поиск окна под курсором, видимость окна.
+Наши точки встраивания в чужой код (то, что чаще всего конфликтует при обновлении):
+
+- `desktop/state/ViewHitTester.*`, `desktop/view/window/Window.cpp`, `desktop/view/window/WindowPresentation.cpp`: поиск окна под курсором, видимость окна, перенос курсора.
 - `layout/LayoutManager.cpp`, `layout/supplementary/DragController.cpp`: сдвиг, перетаскивание.
-- `managers/KeybindManager.cpp` (перенесён), `managers/input/InputManager.cpp`: зум колесом, клики и движение для переключателя.
-- `output/Monitor.cpp`, `render/ElementRenderer.cpp`, `render/Renderer.cpp`, `render/pass/RendererHintsPassElement.hpp`: отрисовка зума, панель переключателя.
-- `helpers/SystemInfo.cpp`: подпись форка в `--version`.
+- `keybinds/Manager.cpp`, `managers/input/InputManager.cpp`, `config/shared/actions/ConfigActions.cpp`: зум колесом, клики и движение для переключателя, клавиши переключателя.
+- `output/Monitor.cpp`, `render/ElementRenderer.cpp`, `render/Renderer.cpp`, `render/pass/RendererHintsPassElement.*`: отрисовка зума, панель переключателя.
+- `helpers/SystemInfo.cpp`: подпись форка в `--version`; `CMakeLists.txt`: без ссылки `hyprland` при установке.
 
-Новые файлы (`src/switcher/`, `layout/algorithm/floating/infinity/`) конфликтовать не могут. Чем меньше мы правим чужих файлов, тем дешевле обновления: при следующей доработке стоит выносить логику в свои файлы и оставлять в чужих только вызовы.
+Новые файлы (`src/switcher/`, `layout/algorithm/floating/infinity/`) конфликтовать не могут. Чем меньше мы правим чужих файлов, тем дешевле обновления: при доработках стоит выносить логику в свои файлы и оставлять в чужих только вызовы.
 
 ## Как обновиться вручную
 

@@ -71,8 +71,12 @@ while read -r line; do
     [[ -z "$line" || "$line" == \#* ]] && { echo "$line" >> "$pins"; continue; }
     read -r name url rev <<<"$line"
     new=$(git ls-tree "$COMMIT" "subprojects/$name" | awk '$2=="commit" {print $3}')
-    echo "$name $url ${new:-$rev}" >> "$pins"
-    [[ -z "$new" || "$new" == "$rev" ]] || echo "Подпроект $name: ${rev:0:7} -> ${new:0:7}"
+    if [[ -z "$new" ]]; then
+        echo "Подпроект $name больше не нужен оригиналу (теперь системная зависимость?), убран из subprojects.pins"
+        continue
+    fi
+    echo "$name $url $new" >> "$pins"
+    [[ "$new" == "$rev" ]] || echo "Подпроект $name: ${rev:0:7} -> ${new:0:7}"
 done < scripts/subprojects.pins
 mv "$pins" scripts/subprojects.pins
 

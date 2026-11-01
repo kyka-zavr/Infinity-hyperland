@@ -1,12 +1,13 @@
 #include "LayoutManager.hpp"
 
-#include "../managers/EventManager.hpp"
+#include "../ipc/s2/S2.hpp"
 #include "../managers/fullscreen/FullscreenController.hpp"
 #include "space/Space.hpp"
 #include "algorithm/Algorithm.hpp"
 #include "target/Target.hpp"
 #include "../managers/input/InputManager.hpp"
-#include "../managers/KeybindManager.hpp"
+#include "../keybinds/Manager.hpp"
+#include "../keybinds/Resolver.hpp"
 #include "../config/ConfigValue.hpp"
 
 #include "../output/Monitor.hpp"
@@ -16,6 +17,7 @@
 #include "../desktop/state/FocusState.hpp"
 #include "../desktop/state/ViewState.hpp"
 #include "../desktop/view/Group.hpp"
+#include "../desktop/view/window/WindowGroupMembership.hpp"
 #include "../event/EventBus.hpp"
 
 using namespace Layout;
@@ -50,10 +52,10 @@ void CLayoutManager::changeFloatingMode(SP<ITarget> target) {
     if (pastFsMode != Fullscreen::FSMODE_NONE)
         Fullscreen::controller()->setFullscreenMode(target->window(), pastFsMode);
 
-    g_pEventManager->postEvent(SHyprIPCEvent({
+    IPC::Socket2::sock()->postEvent({
         .event = "changefloatingmode",
         .data  = std::format("{:x},{}", rc<uintptr_t>(target->window().get()), sc<int>(target->floating())),
-    }));
+    });
     Event::bus()->m_events.window.floating.emit(target->window());
 }
 
@@ -68,10 +70,10 @@ bool CLayoutManager::panModsHeld() const {
     static uint32_t    mask = 0;
     if (lastMods != *PPANMODS) {
         lastMods = *PPANMODS;
-        mask     = g_pKeybindManager->stringToModMask(lastMods);
+        mask     = sc<uint32_t>(Keybinds::modMaskFromString(lastMods));
     }
 
-    return mask != 0 && (g_pInputManager->getModsFromAllKBs() & mask) == mask;
+    return mask != 0 && (sc<uint32_t>(g_pInputManager->getModsFromAllKBs()) & mask) == mask;
 }
 
 // the plane is shared by all monitors: one pan moves every workspace that is in Infinity mode (the view lives in one place)
@@ -88,11 +90,11 @@ bool CLayoutManager::panInfinityEverywhere(const Vector2D& Δ) {
 
     for (const auto& m : State::monitorState()->monitors()) {
         const auto WS = m->m_activeWorkspace;
-        if (!WS || !WS->m_space || !WS->m_space->algorithm() || !WS->m_space->algorithm()->infinityActive())
+        if (!WS || !WS->space() || !WS->space()->algorithm() || !WS->space()->algorithm()->infinityActive())
             continue;
 
         // the view is shared: one pan moves the plane for every Infinity workspace on every monitor
-        WS->m_space->algorithm()->panInfinity(Δ / WS->m_space->algorithm()->infinityZoom());
+        WS->space()->algorithm()->panInfinity(Δ / WS->space()->algorithm()->infinityZoom());
         panned = true;
         break;
     }
@@ -111,7 +113,7 @@ Config::ErrorResult CLayoutManager::infinityMsg(const std::string_view& sv, PHLW
         const auto PLANE  = g_pInputManager->planeCoords(SCREEN, MON);
         const auto W      = Desktop::viewState()->hitTest().windowAt(PLANE, Desktop::View::ALLOW_FLOATING | Desktop::View::RESERVED_EXTENTS | Desktop::View::INPUT_EXTENTS, nullptr, MON);
 
-        return Config::configError(std::format("probe: screen {},{} plane {},{} window '{}'", SCREEN.x, SCREEN.y, PLANE.x, PLANE.y, W ? W->m_title : "none"),
+        return Config::configError(std::format("probe: screen {},{} plane {},{} window '{}'", SCREEN.x, SCREEN.y, PLANE.x, PLANE.y, W ? W->metadata().title() : "none"),
                                    Config::eConfigErrorLevel::INFO, Config::eConfigErrorCode::UNKNOWN);
     }
 
@@ -125,15 +127,15 @@ Config::ErrorResult CLayoutManager::infinityMsg(const std::string_view& sv, PHLW
 
     // the mode follows the focused workspace and is applied to the active workspace of every monitor
     if (arg == "toggle")
-        arg = focused->m_space->algorithm()->infinityActive() ? "off" : "on";
+        arg = focused->space()->algorithm()->infinityActive() ? "off" : "on";
 
     const auto MSG = std::format("infinity {}", arg);
 
-    auto       result = focused->m_space->layoutMsg(MSG);
+    auto       result = focused->space()->layoutMsg(MSG);
 
     for (const auto& m : State::monitorState()->monitors()) {
         const auto WS = m->m_activeWorkspace;
-        if (!WS || WS == focused || !WS->m_space)
+        if (!WS || WS == focused || !WS->space())
             continue;
 
         // the view is shared, pan and zoom were already applied to all workspaces once
@@ -141,7 +143,7 @@ Config::ErrorResult CLayoutManager::infinityMsg(const std::string_view& sv, PHLW
             continue;
 
         // other monitors may legitimately refuse
-        WS->m_space->layoutMsg(MSG);
+        WS->space()->layoutMsg(MSG);
     }
 
     return result;
@@ -182,14 +184,14 @@ void CLayoutManager::setTargetGeom(const CBox& box, SP<ITarget> target) {
 bool CLayoutManager::infinityActiveOnFocused() const {
     const auto MONITOR = Desktop::focusState()->monitor();
     const auto WS      = MONITOR ? MONITOR->m_activeWorkspace : nullptr;
-    return WS && WS->m_space && WS->m_space->algorithm() && WS->m_space->algorithm()->infinityActive();
+    return WS && WS->space() && WS->space()->algorithm() && WS->space()->algorithm()->infinityActive();
 }
 
 void CLayoutManager::centerInfinityOn(PHLWINDOW window) {
-    if (!window || !window->m_workspace || !window->m_workspace->m_space || !window->m_workspace->m_space->algorithm() || !window->m_workspace->m_monitor)
+    if (!window || !window->m_workspace || !window->m_workspace->space() || !window->m_workspace->space()->algorithm() || !window->m_workspace->m_monitor)
         return;
 
-    const auto ALGO    = window->m_workspace->m_space->algorithm();
+    const auto ALGO    = window->m_workspace->space()->algorithm();
     const auto MONITOR = window->m_workspace->m_monitor.lock();
     if (!ALGO->infinityActive() || !MONITOR)
         return;
@@ -217,7 +219,7 @@ Config::ErrorResult CLayoutManager::layoutMsg(const std::string_view& sv) {
     if (sv == "infinity" || sv.starts_with("infinity "))
         return infinityMsg(sv, ws);
 
-    return ws->m_space->layoutMsg(sv);
+    return ws->space()->layoutMsg(sv);
 }
 
 void CLayoutManager::moveTarget(const Vector2D& Δ, SP<ITarget> target) {
@@ -227,8 +229,8 @@ void CLayoutManager::moveTarget(const Vector2D& Δ, SP<ITarget> target) {
     target->space()->moveTarget(Δ, target);
 }
 
-void CLayoutManager::endDragTarget() {
-    m_dragStateController->dragEnd();
+bool CLayoutManager::endDragTarget() {
+    return m_dragStateController->dragEnd();
 }
 
 void CLayoutManager::switchTargets(SP<ITarget> a, SP<ITarget> b, bool preserveFocus) {
@@ -253,7 +255,7 @@ void CLayoutManager::switchTargets(SP<ITarget> a, SP<ITarget> b, bool preserveFo
 void CLayoutManager::moveInDirection(SP<ITarget> target, const std::string& direction, bool silent) {
     Math::eDirection dir = Math::fromChar(direction.at(0));
     if (dir == Math::DIRECTION_DEFAULT) {
-        Log::logger->log(Log::ERR, "invalid direction for moveInDirection: {}", direction);
+        LOG(Log::ERR, "invalid direction for moveInDirection: {}", direction);
         return;
     }
 
@@ -275,9 +277,9 @@ void CLayoutManager::bringTargetToTop(SP<ITarget> target) {
     if (!target)
         return;
 
-    if (target->window()->m_group) {
+    if (target->window()->grouping().group()) {
         // grouped, change the current to this window
-        target->window()->m_group->setCurrent(target->window());
+        target->window()->grouping().group()->setCurrent(target->window());
     }
 }
 
@@ -288,9 +290,9 @@ std::optional<Vector2D> CLayoutManager::predictSizeForNewTiledTarget() {
         return std::nullopt;
 
     if (FOCUSED_MON->m_activeSpecialWorkspace)
-        return FOCUSED_MON->m_activeSpecialWorkspace->m_space->predictSizeForNewTiledTarget();
+        return FOCUSED_MON->m_activeSpecialWorkspace->space()->predictSizeForNewTiledTarget();
 
-    return FOCUSED_MON->m_activeWorkspace->m_space->predictSizeForNewTiledTarget();
+    return FOCUSED_MON->m_activeWorkspace->space()->predictSizeForNewTiledTarget();
 }
 
 const UP<Supplementary::CDragStateController>& CLayoutManager::dragController() {
@@ -341,7 +343,7 @@ void CLayoutManager::performSnap(Vector2D& sourcePos, Vector2D& sourceSize, SP<I
 
     if (*SNAPWINDOWGAP) {
         const double GAPSIZE       = *SNAPWINDOWGAP;
-        const auto   WSID          = DRAGGINGWINDOW->workspaceID();
+        const auto   WORKSPACE     = DRAGGINGWINDOW->m_workspace;
         const bool   HASFULLSCREEN = DRAGGINGWINDOW->m_workspace && Fullscreen::controller()->hasFullscreen(DRAGGINGWINDOW->m_workspace);
 
         const auto*  GAPSIN = *SNAPRESPECTGAPS ? sc<Config::CCssGapData*>(PGAPSIN.ptr()) : &GAPSNONE;
@@ -349,8 +351,8 @@ void CLayoutManager::performSnap(Vector2D& sourcePos, Vector2D& sourceSize, SP<I
         const double GAPSY  = GAPSIN->m_top + GAPSIN->m_bottom;
 
         for (auto& other : Desktop::windowState()->windows()) {
-            if ((HASFULLSCREEN && !other->isAllowedOverFullscreen()) || other == DRAGGINGWINDOW || other->workspaceID() != WSID || !other->m_isMapped ||
-                other->isX11OverrideRedirect())
+            if ((HASFULLSCREEN && !other->isAllowedOverFullscreen()) || other == DRAGGINGWINDOW || other->m_workspace != WORKSPACE || !other->mapped() ||
+                other->backend().traits().overrideRedirect)
                 continue;
 
             const CBox   SURF   = other->getWindowBoxUnified(Desktop::View::RESERVED_EXTENTS);
@@ -466,17 +468,18 @@ void CLayoutManager::performSnap(Vector2D& sourcePos, Vector2D& sourceSize, SP<I
 
 void CLayoutManager::recalculateMonitor(PHLMONITOR m, eRecalculateMonitorReason reason) {
     if (m->m_activeSpecialWorkspace)
-        m->m_activeSpecialWorkspace->m_space->recalculate(recalcMonitorReasonToRecalcReason(reason));
+        m->m_activeSpecialWorkspace->space()->recalculate(recalcMonitorReasonToRecalcReason(reason));
 
     if (m->m_activeWorkspace)
-        m->m_activeWorkspace->m_space->recalculate(recalcMonitorReasonToRecalcReason(reason));
+        m->m_activeWorkspace->space()->recalculate(recalcMonitorReasonToRecalcReason(reason));
 }
 
 void CLayoutManager::invalidateMonitorGeometries(PHLMONITOR m) {
-    for (const auto& ws : State::workspaceState()->workspaces()) {
+    for (const auto& ws : State::Workspace::state()->workspaces()) {
         if (ws && ws->m_monitor == m) {
-            ws->m_space->recheckWorkArea();
-            ws->m_space->recalculate(RECALCULATE_REASON_INVALIDATE_MONITOR_GEOMETRIES);
+            const auto& SPACE = ws->space();
+            SPACE->recheckWorkArea();
+            SPACE->recalculate(RECALCULATE_REASON_INVALIDATE_MONITOR_GEOMETRIES);
         }
     }
 }

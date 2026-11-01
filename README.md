@@ -2,7 +2,7 @@
 
 > **Это форк [Hyprland](https://github.com/hyprwm/Hyprland), а не оригинальный проект.**
 > Hyprland написан vaxerski и контрибьюторами hyprwm (BSD 3-Clause), вся основа композитора принадлежит им.
-> С авторами Hyprland этот форк не связан и ими не одобрен. База: **v0.56.2** (`efb5099`).
+> С авторами Hyprland этот форк не связан и ими не одобрен. База: **v0.57.0** (`0aa6745`).
 > Здесь только наши изменения поверх, они перечислены ниже и видны в истории git.
 >
 > *English: a fork of the Hyprland Wayland compositor that adds a native infinite canvas mode and an Alt-Tab window switcher with live previews. Not affiliated with the Hyprland authors.*
@@ -50,7 +50,7 @@ cd Infinity-hyperland
 Зависимости те же, что у Hyprland, список для Arch: [installer/arch-deps.txt](installer/arch-deps.txt).
 
 ```sh
-scripts/fetch-subprojects.sh                       # подпроекты udis86 и hyprland-protocols
+scripts/fetch-subprojects.sh                       # подпроект udis86 (hyprland-protocols с 0.57 системный пакет)
 cmake -S hyprland -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j3                            # на слабой машине следите за памятью, -j$(nproc) может её исчерпать
 dev/run-nested.sh                                  # запуск вложенным окном внутри текущей Wayland-сессии

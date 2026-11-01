@@ -7,7 +7,7 @@
 3. [x] Склонировать Hyprland v0.56.2 в `hyprland/`, коммит тега `efb50993780079460b0cbed1363e2166a2de1d9f`.
 4. [x] Собрать оригинал без изменений и запустить во вложенном окне (проверено владельцем). DRM из TTY ещё не проверен.
 
-Как собирать: подмодули `subprojects/udis86` и `subprojects/hyprland-protocols` нужно подтянуть отдельно (`git submodule update --init --depth 1 <путь>`), нужен системный `hyprwayland-scanner`. Затем `cmake -S hyprland -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)`.
+Как собирать: подпроект udis86 подтягивается `scripts/fetch-subprojects.sh`, нужны системные `hyprwayland-scanner`, `hyprland-protocols` (с 0.57) и `hyprwire` (список: `installer/arch-deps.txt`). Затем `cmake -S hyprland -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)`.
 5. [x] Переименовать снаружи и добавить copyright kyka-zavr. Внутренние имена (hyprctl, сокеты, HYPRLAND_*, конфиг) оставлены как у Hyprland ради совместимости и лёгкого слияния upstream.
 6. [x] Дизайн бесконечного стола: [05-infinity-canvas.md](05-infinity-canvas.md).
 7. [x] Карта кода: [06-code-map.md](06-code-map.md) (первичный разбор, порядок реализации там же).
@@ -28,7 +28,7 @@
    - [x] Установка в `/opt/infinity-hyprland` (не трогает установленный Hyprland), пункт «Infinity-hyprland» в экране входа, отдельный конфиг `~/.config/infinity-hyprland` (копия конфигов Hyprland или чистый, существующее не перезаписывается), удаление. Проверено на тестовом префиксе, обёртка сессии во вложенном запуске, копирование на реальном конфиге владельца.
    - [ ] Проверка входа через экран логина на реальной системе (SDDM установлен).
    - [ ] PKGBUILD для установки как пакета.
-10. [~] Обновления на новые версии Hyprland ([07-updating.md](07-updating.md)): скрипт слияния и ежедневная проверка готовы. База форка v0.56.2, оригинал на v0.57.0: слияние даёт 12 конфликтов, нужен ручной перенос наших правок (обработка клавиш переехала в `src/keybinds/`).
+10. [x] Обновления на новые версии Hyprland ([07-updating.md](07-updating.md)): скрипт слияния и ежедневная проверка готовы. Форк перенесён с v0.56.2 на **v0.57.0** (2026-11-01), проверено во вложенном окне.
 
 ## Как управлять Infinity сейчас
 

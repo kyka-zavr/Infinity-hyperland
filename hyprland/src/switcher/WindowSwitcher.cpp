@@ -8,8 +8,9 @@
 #include "../config/shared/actions/ConfigActions.hpp"
 #include "../desktop/history/WindowHistoryTracker.hpp"
 #include "../desktop/state/FocusState.hpp"
-#include "../desktop/view/Window.hpp"
+#include "../desktop/view/window/Window.hpp"
 #include "../devices/IKeyboard.hpp"
+#include "../input/Keys.hpp"
 #include "../layout/LayoutManager.hpp"
 #include "../managers/input/InputManager.hpp"
 #include "../output/Monitor.hpp"
@@ -68,7 +69,7 @@ std::string CWindowSwitcher::trigger(bool backwards) {
 
     m_entries.clear();
     for (const auto& w : windows) {
-        const auto& APP = lookupApp(w->m_class.empty() ? w->m_initialClass : w->m_class);
+        const auto& APP = lookupApp(w->metadata().appID().empty() ? w->metadata().initialAppID() : w->metadata().appID());
         m_entries.emplace_back(SEntry{.window = w, .appName = APP.name, .iconPath = APP.iconPath});
     }
 
@@ -76,7 +77,7 @@ std::string CWindowSwitcher::trigger(bool backwards) {
     m_openPos  = g_pInputManager->getMouseCoordsInternal();
 
     // releasing one of the modifiers that were held when the switcher opened confirms the choice (Shift only changes direction)
-    m_holdMods = g_pInputManager->getModsFromAllKBs() & (HL_MODIFIER_ALT | HL_MODIFIER_CTRL | HL_MODIFIER_META);
+    m_holdMods = sc<uint32_t>(g_pInputManager->getModsFromAllKBs()) & (sc<uint32_t>(Input::HL_MODIFIER_ALT) | sc<uint32_t>(Input::HL_MODIFIER_CTRL) | sc<uint32_t>(Input::HL_MODIFIER_META));
 
     redraw();
     return {};
@@ -196,13 +197,13 @@ bool CWindowSwitcher::onKey(xkb_keysym_t sym, bool pressed) {
         uint32_t mod = 0;
         switch (sym) {
             case XKB_KEY_Alt_L:
-            case XKB_KEY_Alt_R: mod = HL_MODIFIER_ALT; break;
+            case XKB_KEY_Alt_R: mod = sc<uint32_t>(Input::HL_MODIFIER_ALT); break;
             case XKB_KEY_Control_L:
-            case XKB_KEY_Control_R: mod = HL_MODIFIER_CTRL; break;
+            case XKB_KEY_Control_R: mod = sc<uint32_t>(Input::HL_MODIFIER_CTRL); break;
             case XKB_KEY_Super_L:
             case XKB_KEY_Super_R:
             case XKB_KEY_Meta_L:
-            case XKB_KEY_Meta_R: mod = HL_MODIFIER_META; break;
+            case XKB_KEY_Meta_R: mod = sc<uint32_t>(Input::HL_MODIFIER_META); break;
             default: break;
         }
 
@@ -250,7 +251,7 @@ void CWindowSwitcher::updateText(SText& t, const std::string& text, int pt, int 
     t.size = t.tex ? t.tex->m_size : Vector2D{};
 }
 
-void CWindowSwitcher::draw(PHLMONITOR monitor) {
+void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
     if (!active())
         return;
 
@@ -295,7 +296,7 @@ void CWindowSwitcher::draw(PHLMONITOR monitor) {
     panel.box   = {PANELX, PANELY, PANELW, PANELH};
     panel.color = CHyprColor{0.07F, 0.07F, 0.09F, 0.94F};
     panel.round = sc<int>(16.F * SCALE);
-    g_pHyprRenderer->m_renderPass.add(makeUnique<CRectPassElement>(panel));
+    ctx.m_pass.add(makeUnique<CRectPassElement>(panel));
 
     for (size_t i = 0; i < N; ++i) {
         auto&       e = m_entries[i];
@@ -311,14 +312,14 @@ void CWindowSwitcher::draw(PHLMONITOR monitor) {
             sel.box   = {x - SELPAD * SCALE, y - SELPAD * SCALE, TW + 2 * SELPAD * SCALE, TH + 2 * SELPAD * SCALE};
             sel.color = CHyprColor{0.36F, 0.56F, 1.F, 1.F};
             sel.round = sc<int>(12.F * SCALE);
-            g_pHyprRenderer->m_renderPass.add(makeUnique<CRectPassElement>(sel));
+            ctx.m_pass.add(makeUnique<CRectPassElement>(sel));
         }
 
         CRectPassElement::SRectData tile;
         tile.box   = {x, y, TW, TH};
         tile.color = i == m_selected ? CHyprColor{0.16F, 0.17F, 0.22F, 1.F} : CHyprColor{0.12F, 0.12F, 0.15F, 1.F};
         tile.round = sc<int>(10.F * SCALE);
-        g_pHyprRenderer->m_renderPass.add(makeUnique<CRectPassElement>(tile));
+        ctx.m_pass.add(makeUnique<CRectPassElement>(tile));
 
         // icon
         if (!e.iconTried) {
@@ -336,7 +337,7 @@ void CWindowSwitcher::draw(PHLMONITOR monitor) {
             icon.tex = e.icon;
             icon.box = {x + INSET, y + std::round((HEADERH - ICONSZ) / 2.F), ICONSZ, ICONSZ};
             icon.a   = 1.F;
-            g_pHyprRenderer->m_renderPass.add(makeUnique<CTexPassElement>(std::move(icon)));
+            ctx.m_pass.add(makeUnique<CTexPassElement>(std::move(icon)));
             textX += ICONSZ + 8.F * SCALE;
         }
 
@@ -348,7 +349,7 @@ void CWindowSwitcher::draw(PHLMONITOR monitor) {
             t.tex = name.tex;
             t.box = {textX, y + std::round((HEADERH - name.size.y) / 2.F), std::min<double>(name.size.x, x + TW - INSET - textX), name.size.y};
             t.a   = 1.F;
-            g_pHyprRenderer->m_renderPass.add(makeUnique<CTexPassElement>(std::move(t)));
+            ctx.m_pass.add(makeUnique<CTexPassElement>(std::move(t)));
         }
 
         // live preview: the window's own surface texture, fitted into the area under the header
@@ -358,7 +359,7 @@ void CWindowSwitcher::draw(PHLMONITOR monitor) {
         well.box   = AREA;
         well.color = CHyprColor{0.05F, 0.05F, 0.07F, 1.F};
         well.round = sc<int>(6.F * SCALE);
-        g_pHyprRenderer->m_renderPass.add(makeUnique<CRectPassElement>(well));
+        ctx.m_pass.add(makeUnique<CRectPassElement>(well));
 
         const auto SURF    = W->wlSurface() ? W->wlSurface()->resource() : nullptr;
         const auto PREVIEW = SURF ? SURF->m_current.texture : nullptr;
@@ -372,7 +373,7 @@ void CWindowSwitcher::draw(PHLMONITOR monitor) {
             pv.box   = {AREA.x + std::round((AREA.w - PW) / 2.0), AREA.y + std::round((AREA.h - PH) / 2.0), PW, PH};
             pv.a     = 1.F;
             pv.round = sc<int>(4.F * SCALE);
-            g_pHyprRenderer->m_renderPass.add(makeUnique<CTexPassElement>(std::move(pv)));
+            ctx.m_pass.add(makeUnique<CTexPassElement>(std::move(pv)));
         } else if (e.icon) {
             // nothing to show yet: the big icon stands in for the window
             const float BIG = std::min(AREA.w, AREA.h) * 0.5F;
@@ -381,18 +382,18 @@ void CWindowSwitcher::draw(PHLMONITOR monitor) {
             icon.tex = e.icon;
             icon.box = {AREA.x + std::round((AREA.w - BIG) / 2.F), AREA.y + std::round((AREA.h - BIG) / 2.F), BIG, BIG};
             icon.a   = 0.8F;
-            g_pHyprRenderer->m_renderPass.add(makeUnique<CTexPassElement>(std::move(icon)));
+            ctx.m_pass.add(makeUnique<CTexPassElement>(std::move(icon)));
         }
 
         // window title
         auto& title = e.title[PT_TITLE];
-        updateText(title, W->m_title, PT_TITLE, sc<int>(TW - 2 * INSET), 400, CHyprColor{0.72F, 0.74F, 0.8F, 1.F});
+        updateText(title, W->metadata().title(), PT_TITLE, sc<int>(TW - 2 * INSET), 400, CHyprColor{0.72F, 0.74F, 0.8F, 1.F});
         if (title.tex) {
             CTexPassElement::SRenderData t;
             t.tex = title.tex;
             t.box = {x + INSET, y + TH - FOOTERH + std::round((FOOTERH - title.size.y) / 2.F), std::min<double>(title.size.x, TW - 2 * INSET), title.size.y};
             t.a   = 1.F;
-            g_pHyprRenderer->m_renderPass.add(makeUnique<CTexPassElement>(std::move(t)));
+            ctx.m_pass.add(makeUnique<CTexPassElement>(std::move(t)));
         }
     }
 

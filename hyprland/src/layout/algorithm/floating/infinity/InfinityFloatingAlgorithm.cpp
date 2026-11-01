@@ -5,7 +5,7 @@
 #include "../../Algorithm.hpp"
 
 #include "../../../target/Target.hpp"
-#include "../../../../desktop/view/Window.hpp"
+#include "../../../../desktop/view/window/Window.hpp"
 #include "../../../../output/Monitor.hpp"
 #include "../../../../render/Renderer.hpp"
 
@@ -40,7 +40,7 @@ void CInfinityFloatingAlgorithm::damageMonitor() const {
 void CInfinityFloatingAlgorithm::newTarget(SP<ITarget> target) {
     // a window that is already mapped and has a place (mode switch) keeps it
     const auto WINDOW = target->window();
-    if (WINDOW && !WINDOW->m_firstMap && target->position().w > 1 && target->position().h > 1) {
+    if (WINDOW && !(WINDOW->m_state & Desktop::View::WINDOW_STATE_FIRST_MAP) && target->position().w > 1 && target->position().h > 1) {
         remember(target);
         return;
     }
