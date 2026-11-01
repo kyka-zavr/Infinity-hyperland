@@ -1,0 +1,120 @@
+name: Upstream sync
+
+# Раз в сутки проверяет новый релиз Hyprland. Чистое слияние: ветка sync/<тег> + проверочная сборка + pull request.
+# Конфликты: issue со списком файлов (решаются вручную, scripts/sync-upstream.sh). main автоматически не меняется.
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Тег Hyprland (пусто = последний стабильный)"
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.sync.outputs.tag }}
+      merged: ${{ steps.sync.outputs.merged }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Merge the new release
+        id: sync
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git branch --track upstream origin/upstream 2>/dev/null || true
+
+          before=$(sed -n 1p UPSTREAM)
+          set +e
+          scripts/sync-upstream.sh $INPUT_TAG > sync.log 2>&1
+          code=$?
+          set -e
+          cat sync.log
+
+          if [ $code -eq 0 ] && grep -q "Уже на" sync.log; then
+            echo "merged=no" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+
+          tag=$(grep -oE "новая: v[0-9][^ ]*" sync.log | sed 's/новая: //')
+          [ -n "$tag" ] || tag=$(grep -oE "Hyprland v[0-9][^ ]*" sync.log | head -1 | sed 's/Hyprland //')
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+          if [ $code -eq 2 ]; then
+            files=$(sed -n '/^КОНФЛИКТЫ/,/^Решите/p' sync.log | grep '^  ' || true)
+            title="Hyprland $tag: конфликты слияния"
+            body=$(printf 'Автоматическое слияние с Hyprland %s (база сейчас %s) не прошло.\n\nКонфликтующие файлы:\n\n```\n%s\n```\n\nКак решить локально:\n\n```sh\ngit fetch origin\nscripts/sync-upstream.sh %s\n# решить конфликты, git add, git commit, собрать, открыть PR из sync/%s\n```' "$tag" "$before" "$files" "$tag" "$tag")
+            if gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number' | grep -q .; then
+              echo "issue already open"
+            else
+              gh issue create --title "$title" --body "$body"
+            fi
+            echo "merged=conflict" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          [ $code -eq 0 ] || exit $code
+
+          git push origin "sync/$tag" upstream
+          echo "merged=yes" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: sync
+    if: needs.sync.outputs.merged == 'yes'
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    outputs:
+      result: ${{ steps.build.outcome }}
+    steps:
+      - name: Dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm --needed git
+      - uses: actions/checkout@v4
+        with:
+          ref: sync/${{ needs.sync.outputs.tag }}
+      - name: Build tools and libraries
+        run: pacman -S --noconfirm --needed $(grep -v '^#' installer/arch-deps.txt)
+      - name: Build
+        id: build
+        run: |
+          git config --global --add safe.directory "$PWD"
+          scripts/fetch-subprojects.sh
+          cmake -S hyprland -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j2
+
+  pull-request:
+    needs: [sync, build]
+    if: always() && needs.sync.outputs.merged == 'yes'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Open the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.sync.outputs.tag }}
+          RESULT: ${{ needs.build.result }}
+        run: |
+          if [ "$RESULT" = "success" ]; then
+            status="Проверочная сборка на Arch прошла."
+            draft=""
+          else
+            status="**Проверочная сборка не прошла** ($RESULT): нужны ручные правки, см. логи Actions."
+            draft="--draft"
+          fi
+          gh pr create $draft --base main --head "sync/$TAG" \
+            --title "Hyprland $TAG" \
+            --body "Автоматическое слияние релиза Hyprland $TAG.
+
+          $status
+
+          Перед слиянием: сверить список зависимостей (installer/arch-deps.txt) с пакетом hyprland и проверить режим Infinity и переключатель окон вручную (dev/run-nested.sh)." || echo "PR already exists"
