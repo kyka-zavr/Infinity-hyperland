@@ -1,0 +1,37 @@
+#!/bin/sh
+# Запуск сессии Infinity-hyprland из экрана входа (SDDM, GDM, greetd и других).
+# Используется ТОЛЬКО свой каталог конфигов, ~/.config/hypr оригинального Hyprland не читается и не меняется.
+
+PREFIX="${INFINITY_HYPRLAND_PREFIX:-@PREFIX@}"
+BIN="${INFINITY_HYPRLAND_BIN:-$PREFIX/bin/InfinityHyprland}"
+START="${INFINITY_HYPRLAND_START:-$PREFIX/bin/start-hyprland}"
+CONFIG_TOOL="${INFINITY_HYPRLAND_CONFIG_TOOL:-$PREFIX/bin/infinity-hyprland-config}"
+CONFDIR="${INFINITY_HYPRLAND_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/infinity-hyprland}"
+
+# порталы и приложения, которые ждут "Hyprland", продолжают работать
+export XDG_CURRENT_DESKTOP="Infinity-hyprland:Hyprland"
+export XDG_SESSION_DESKTOP="Infinity-hyprland"
+export XDG_SESSION_TYPE="wayland"
+
+if [ -z "$HYPRLAND_CONFIG" ]; then
+    for name in hyprland.lua hyprland.conf; do
+        if [ -f "$CONFDIR/$name" ]; then
+            HYPRLAND_CONFIG="$CONFDIR/$name"
+            break
+        fi
+    done
+fi
+
+# конфига ещё нет (установщик не запускали для этого пользователя): создаём стандартный, ничего чужого не трогая
+if [ -z "$HYPRLAND_CONFIG" ] && [ -x "$CONFIG_TOOL" ]; then
+    INFINITY_HYPRLAND_CONFIG_DIR="$CONFDIR" "$CONFIG_TOOL" fresh --quiet
+    [ -f "$CONFDIR/hyprland.lua" ] && HYPRLAND_CONFIG="$CONFDIR/hyprland.lua"
+fi
+
+[ -n "$HYPRLAND_CONFIG" ] && export HYPRLAND_CONFIG
+
+# start-hyprland перезапускает композитор в безопасном режиме после сбоя
+if [ -x "$START" ]; then
+    exec "$START" --path "$BIN"
+fi
+exec "$BIN"

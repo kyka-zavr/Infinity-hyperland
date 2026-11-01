@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Infinity-hyprland
+Comment=Hyprland fork with an infinite canvas and an Alt-Tab window switcher
+Exec=@PREFIX@/bin/infinity-hyprland-session
+Type=Application
+DesktopNames=Infinity-hyprland;Hyprland
+Keywords=tiling;wayland;compositor;

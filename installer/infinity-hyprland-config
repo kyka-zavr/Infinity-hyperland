@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+# Управление конфигом Infinity-hyprland. Работает только с ~/.config/infinity-hyprland (или INFINITY_HYPRLAND_CONFIG_DIR),
+# ~/.config/hypr оригинального Hyprland ТОЛЬКО читается (в режиме copy-hyprland) и никогда не меняется.
+#
+#   infinity-hyprland-config fresh [--force] [--quiet]
+#       создаёт стандартный конфиг из примера (с бинами Infinity)
+#   infinity-hyprland-config copy-hyprland [--from DIR] [--force] [--quiet]
+#       копирует в свой каталог конфиг Hyprland (главный файл и файлы, на которые он ссылается) и добавляет бинды Infinity
+#   infinity-hyprland-config status
+set -euo pipefail
+
+PREFIX="${INFINITY_HYPRLAND_PREFIX:-@PREFIX@}"
+SHARE="${INFINITY_HYPRLAND_SHARE:-$PREFIX/share/infinity-hyprland}"
+EXAMPLE="${INFINITY_HYPRLAND_EXAMPLE:-$PREFIX/share/hypr/hyprland.lua}"
+DEST="${INFINITY_HYPRLAND_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/infinity-hyprland}"
+SRC_DEFAULT="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
+MARK='>>> infinity-hyprland'
+
+quiet=0; force=0; src="$SRC_DEFAULT"
+say() { [[ $quiet -eq 1 ]] || printf '%s\n' "$*"; }
+die() { printf 'infinity-hyprland-config: %s\n' "$*" >&2; exit 1; }
+
+main_config() { # <каталог> -> путь к hyprland.lua или hyprland.conf
+    local d="$1" n
+    for n in hyprland.lua hyprland.conf; do [[ -f "$d/$n" ]] && { printf '%s' "$d/$n"; return 0; }; done
+    return 1
+}
+
+# существующий конфиг не трогаем: либо отказ, либо (с --force) резервная копия рядом
+guard_existing() {
+    if existing=$(main_config "$DEST"); then
+        [[ $force -eq 1 ]] || die "в $DEST уже есть конфиг ($(basename "$existing")), ничего не перезаписано (--force сделает резервную копию и заменит)"
+        local bak="$DEST.bak-$(date +%Y%m%d-%H%M%S)"
+        cp -a "$DEST" "$bak"
+        say "Резервная копия: $bak"
+    fi
+}
+
+append_binds() { # <главный файл>
+    local f="$1" snippet
+    case "$f" in *.lua) snippet="$SHARE/infinity-binds.lua" ;; *) snippet="$SHARE/infinity-binds.conf" ;; esac
+    [[ -f "$snippet" ]] || die "нет файла $snippet"
+    if grep -q "$MARK" "$f"; then say "Бинды Infinity уже добавлены в $(basename "$f")"; return; fi
+    { printf '\n'; cat "$snippet"; } >> "$f"
+}
+
+cmd_fresh() {
+    guard_existing
+    [[ -f "$EXAMPLE" ]] || die "нет примера конфига: $EXAMPLE"
+    mkdir -p "$DEST"
+    cp "$EXAMPLE" "$DEST/hyprland.lua"
+    say "Создан $DEST/hyprland.lua (бинды Infinity уже внутри)"
+}
+
+cmd_copy() {
+    [[ -d "$src" ]] || die "нет каталога с конфигом Hyprland: $src"
+    local main; main=$(main_config "$src") || die "в $src нет hyprland.lua или hyprland.conf"
+    guard_existing
+    mkdir -p "$DEST"
+
+    # главный файл и всё, на что он ссылается внутри каталога конфига (source, require, dofile, пути с ~/.config/hypr)
+    local -a queue=("$main") copied=()
+    local f rel ref cand
+    while ((${#queue[@]})); do
+        f="${queue[0]}"; queue=("${queue[@]:1}")
+        rel="${f#"$src"/}"
+        [[ " ${copied[*]-} " == *" $rel "* ]] && continue
+        mkdir -p "$DEST/$(dirname "$rel")"
+        cp "$f" "$DEST/$rel"
+        copied+=("$rel")
+
+        while IFS= read -r ref; do
+            ref="${ref#"$src"/}"; [[ "$ref" == *.config/hypr/* ]] && ref="${ref#*.config/hypr/}"; ref="${ref#./}"
+            for cand in "$ref" "$ref.lua" "$ref.conf" "$(dirname "$rel")/$ref"; do
+                if [[ -f "$src/$cand" && "$cand" != /* && "$cand" != *..* ]]; then queue+=("$src/$cand"); break; fi
+            done
+        done < <(grep -oE '[A-Za-z0-9_./~${}-]+(\.lua|\.conf)?' "$f" | sort -u)
+    done
+
+    # внутри копии ссылки на скопированные файлы ведут в новый каталог, а не в каталог оригинала
+    local c old
+    for c in "${copied[@]}"; do
+        for old in "~/.config/hypr" "\$HOME/.config/hypr" "\${HOME}/.config/hypr" "$src"; do
+            for f in "${copied[@]}"; do
+                sed -i "s|${old//|/\\|}/${f//|/\\|}|$DEST/${f//|/\\|}|g" "$DEST/$c"
+            done
+        done
+        # Lua: os.getenv("HOME") .. "/.config/hypr/файл"  ->  "<новый каталог>/файл"
+        for f in "${copied[@]}"; do
+            fe="${f//./\\.}"
+            sed -i -E "s#os\.getenv\(\"HOME\"\) *\.\. *\"/\.config/hypr/${fe//#/\\#}\"#\"${DEST//#/\\#}/${f//#/\\#}\"#g" "$DEST/$c"
+        done
+    done
+
+    append_binds "$DEST/${main#"$src"/}"
+    say "Скопировано из $src в $DEST: ${copied[*]}"
+    say "Оригинал не изменён. Другие файлы Hyprland (hyprlock, hypridle, hyprpaper и т.д.) читаются своими программами из ~/.config/hypr как раньше."
+}
+
+cmd_status() {
+    local m; if m=$(main_config "$DEST"); then echo "Конфиг: $m"; else echo "Конфига нет ($DEST)"; fi
+    [[ -d "$src" ]] && echo "Оригинал Hyprland: $src (не изменяется)" || true
+}
+
+cmd="${1:-status}"; shift || true
+while (($#)); do
+    case "$1" in
+        --force) force=1 ;;
+        --quiet) quiet=1 ;;
+        --from) src="${2:?--from требует путь}"; shift ;;
+        *) die "неизвестный аргумент: $1" ;;
+    esac
+    shift
+done
+
+case "$cmd" in
+    fresh) cmd_fresh ;;
+    copy-hyprland) cmd_copy ;;
+    status) cmd_status ;;
+    *) die "команды: fresh, copy-hyprland, status" ;;
+esac

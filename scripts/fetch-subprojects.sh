@@ -1,18 +1,24 @@
 #!/usr/bin/env bash
-# Подтягивает подпроекты Hyprland, которых нет в этом репозитории (версии как в нашей базе).
+# Подтягивает подпроекты Hyprland, которых нет в этом репозитории (версии из scripts/subprojects.pins).
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 sub="$root/hyprland/subprojects"
-
-fetch() { # <имя> <url> <коммит>
-    if [[ -e "$sub/$1/.git" ]]; then echo "$1: уже есть"; return; fi
-    rm -rf "${sub:?}/$1"
-    git clone --quiet "$2" "$sub/$1"
-    git -C "$sub/$1" checkout --quiet "$3"
-    echo "$1: $3"
-}
-
 mkdir -p "$sub"
-fetch hyprland-protocols https://github.com/hyprwm/hyprland-protocols bd153e76f751f150a09328dbdeb5e4fab9d23622
-fetch udis86             https://github.com/canihavesomecoffee/udis86 5336633af70f3917760a6d441ff02d93477b0c86
+
+while read -r name url rev; do
+    [[ -z "$name" || "$name" == \#* ]] && continue
+
+    if [[ -e "$sub/$name/.git" ]]; then
+        if [[ "$(git -C "$sub/$name" rev-parse HEAD 2>/dev/null)" == "$rev" ]]; then
+            echo "$name: уже $rev"
+            continue
+        fi
+        rm -rf "${sub:?}/$name" # другая версия: берём заново
+    fi
+
+    rm -rf "${sub:?}/$name"
+    git clone --quiet "$url" "$sub/$name"
+    git -C "$sub/$name" checkout --quiet "$rev"
+    echo "$name: $rev"
+done < "$root/scripts/subprojects.pins"
