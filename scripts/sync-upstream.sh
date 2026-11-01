@@ -37,18 +37,23 @@ echo "База форка: $CURRENT, новая: $TAG"
 git fetch --quiet --depth 1 upstream "refs/tags/$TAG:refs/upstream-tags/$TAG"
 COMMIT=$(git rev-parse "refs/upstream-tags/$TAG^{commit}")
 
-# 1. чистый импорт новой версии в ветку upstream (без переключения веток)
-TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
-git archive "$COMMIT" --prefix=hyprland/ | tar -x -C "$TMP/"
-IDX="$TMP.index"
-tree=$(GIT_INDEX_FILE="$IDX" bash -c 'git --work-tree="$1" add -A -f && git write-tree' _ "$TMP")
-rm -f "$IDX"
-imp=$(git commit-tree "$tree" -p refs/heads/upstream -m "Import Hyprland $TAG ($COMMIT) unmodified
+# 1. чистый импорт новой версии в ветку upstream (без переключения веток); уже сделанный импорт используется повторно
+imp=$(git log refs/heads/upstream --grep="^Import Hyprland $TAG (" -1 --format=%H)
+if [[ -z "$imp" ]]; then
+    TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+    git archive "$COMMIT" --prefix=hyprland/ | tar -x -C "$TMP/"
+    IDX="$TMP.index"
+    tree=$(GIT_INDEX_FILE="$IDX" bash -c 'git --work-tree="$1" add -A -f && git write-tree' _ "$TMP")
+    rm -f "$IDX"
+    imp=$(git commit-tree "$tree" -p refs/heads/upstream -m "Import Hyprland $TAG ($COMMIT) unmodified
 
 Pristine source tree of $UPSTREAM_URL at $TAG.
 Submodule contents are not included, see scripts/fetch-subprojects.sh.")
-git update-ref refs/heads/upstream "$imp"
-echo "Импорт: upstream -> ${imp:0:7}"
+    git update-ref refs/heads/upstream "$imp"
+    echo "Импорт: upstream -> ${imp:0:7}"
+else
+    echo "Импорт $TAG уже есть: ${imp:0:7}"
+fi
 
 # 2. слияние в отдельную ветку
 git switch -q -c "sync/$TAG" main

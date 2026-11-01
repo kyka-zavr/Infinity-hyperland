@@ -1,0 +1,6 @@
+# зависимости сборки и работы для Arch (как у пакета hyprland); по одному или несколько в строке
+base-devel cmake ninja git pkgconf hyprwayland-scanner hyprland-protocols wayland-protocols
+cairo aquamarine glib2 glslang hyprcursor hyprgraphics hyprlang hyprutils lcms2 libcanberra libdrm libei
+libglvnd libinput libx11 libxcb libxcomposite libxcursor libxfixes libxkbcommon libxrender lua mesa muparser
+pango pixman re2 sdbus-cpp tomlplusplus util-linux-libs wayland xcb-proto xcb-util xcb-util-errors
+xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-wm xorg-xwayland

@@ -21,12 +21,8 @@ DO_BUILD=1
 UNINSTALL=0
 JOBS=""
 
-# зависимости сборки и работы (как у пакета hyprland в Arch)
-DEPS=(base-devel cmake ninja git pkgconf hyprwayland-scanner hyprland-protocols wayland-protocols
-      cairo aquamarine glib2 glslang hyprcursor hyprgraphics hyprlang hyprutils lcms2 libcanberra libdrm libei
-      libglvnd libinput libx11 libxcb libxcomposite libxcursor libxfixes libxkbcommon libxrender lua mesa muparser
-      pango pixman re2 sdbus-cpp tomlplusplus util-linux-libs wayland xcb-proto xcb-util xcb-util-errors
-      xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-wm xorg-xwayland)
+# зависимости сборки и работы (общий список с CI)
+mapfile -t DEPS < <(grep -v '^#' "$ROOT/installer/arch-deps.txt" | tr -s ' \n' '\n\n' | grep .)
 
 say()  { printf '\033[1m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[33m!!\033[0m %s\n' "$*" >&2; }

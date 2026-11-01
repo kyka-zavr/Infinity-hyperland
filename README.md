@@ -29,9 +29,25 @@ Wayland-композитор с **бесконечным столом**: окн�
 
 Опции: `infinity:pan_mods`, `infinity:zoom_mods`, `infinity:zoom_step`. Команды: `hyprctl dispatch 'hl.dsp.layout("infinity toggle|on|off|pan <dx> <dy>|zoom <k>")'`, `alttab`, `alttab prev`.
 
-## Сборка и запуск
+## Установка (Arch и производные)
 
-Зависимости те же, что у Hyprland (hyprutils, hyprlang, aquamarine, hyprgraphics, hyprcursor, hyprwayland-scanner и остальное), см. [hyprland/README.md](hyprland/README.md).
+```sh
+git clone https://github.com/kyka-zavr/Infinity-hyperland.git
+cd Infinity-hyperland
+./install.sh
+```
+
+Установщик проверяет и ставит зависимости, собирает композитор и добавляет пункт **«Infinity-hyprland»** в экран входа (SDDM, GDM, greetd и др.). Что важно:
+
+- Ставится в отдельный каталог `/opt/infinity-hyprland`, установленный Hyprland (`/usr/bin/Hyprland`, `hyprctl`) **не затрагивается**. Оба можно держать в системе и выбирать при входе.
+- Конфиг отдельный: `~/.config/infinity-hyprland/`. Установщик спрашивает: **скопировать нужные файлы из `~/.config/hypr`** (оригинал не меняется, дальше две независимые копии) или **создать чистый** свой. Существующий конфиг никогда не перезаписывается.
+- Удаление: `./install.sh --uninstall` (конфиги остаются).
+
+Параметры: `--config copy|fresh|skip`, `--prefix DIR`, `--yes`, `--no-deps`. Установка проверена на тестовом префиксе и во вложенном запуске; вход через экран логина на реальной системе пока не проверен.
+
+## Сборка вручную и запуск для разработки
+
+Зависимости те же, что у Hyprland, список для Arch: [installer/arch-deps.txt](installer/arch-deps.txt).
 
 ```sh
 scripts/fetch-subprojects.sh                       # подпроекты udis86 и hyprland-protocols
@@ -41,6 +57,10 @@ dev/run-nested.sh                                  # запуск вложенн
 ```
 
 Бинарник: `build/InfinityHyprland`. Во вложенном окне главный модификатор `ALT`, переключатель окон на `CTRL+TAB` (конфиг `dev/hyprland.lua`). Настоящая сессия (DRM из TTY) пока не проверена.
+
+## Обновления
+
+База форка записана в [UPSTREAM](UPSTREAM). Новые релизы Hyprland подтягивает `scripts/sync-upstream.sh` (и ежедневная проверка на GitHub): подробности и текущее состояние в [docs/07-updating.md](docs/07-updating.md).
 
 ## Состояние
 
