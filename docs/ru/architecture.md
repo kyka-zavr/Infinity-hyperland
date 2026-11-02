@@ -33,7 +33,7 @@
 
 ## Политика клавиатуры
 
-`keyboard/KeyboardPolicy.*` стоит над `IKeyboard::updateModifiers`, единственным местом, через которое проходят все смены раскладки и замков. Он помнит раскладку и состояние Caps Lock для каждого окна (`infinity:kb_layout_mode`, `kb_default_layout`, `caps_mode`), применяет их при смене фокуса (событие `window.active`), а в режиме «always» возвращает Caps Lock, когда его выключили. Точки входа: события клавиатуры `modifiers` и `keymap` в `managers/input/InputManager.cpp`, сообщение раскладки `kblayout` в `config/shared/actions/ConfigActions.cpp`.
+`keyboard/KeyboardPolicy.*` стоит над `IKeyboard::updateModifiers`, единственным местом, через которое проходят все смены раскладки и замков. Он помнит раскладку и состояние Num Lock для каждого окна (`infinity:kb_layout_mode`, `kb_default_layout`, `num_mode`), применяет их при смене фокуса (событие `window.active`), а в режиме «always» возвращает Num Lock, когда его выключили. Точки входа: события клавиатуры `modifiers` и `keymap` в `managers/input/InputManager.cpp`, сообщение раскладки `kblayout` в `config/shared/actions/ConfigActions.cpp`.
 
 ## Настройки, палитра и бинды
 

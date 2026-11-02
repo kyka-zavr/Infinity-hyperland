@@ -26,7 +26,7 @@ DO_DEPS=1
 DO_BUILD=1
 UNINSTALL=0
 JOBS=""
-THEME=""; KB_MODE=""; KB_DEFAULT=""; CAPS=""; LAYOUTS=""   # выбор из текстового интерфейса (или командной строки)
+THEME=""; KB_MODE=""; KB_DEFAULT=""; NUM=""; LAYOUTS=""   # выбор из текстового интерфейса (или командной строки)
 
 # зависимости сборки и работы (общий список с CI)
 mapfile -t DEPS < <(grep -v '^#' "$ROOT/installer/arch-deps.txt" | tr -s ' \n' '\n\n' | grep .)
@@ -48,7 +48,7 @@ while (($#)); do
         --theme) THEME="${2:?}"; shift ;;             # dark | light
         --kb-mode) KB_MODE="${2:?}"; shift ;;         # system | per_window
         --kb-default) KB_DEFAULT="${2:?}"; shift ;;   # номер раскладки нового окна, -1: текущая
-        --caps) CAPS="${2:?}"; shift ;;               # normal | per_window | always
+        --num) NUM="${2:?}"; shift ;;               # normal | per_window | always
         --layouts) LAYOUTS="${2:?}"; shift ;;         # us,ru,de:nodeadkeys
         --no-deps) DO_DEPS=0 ;;
         --no-build) DO_BUILD=0 ;;
@@ -222,7 +222,7 @@ case "$CONFIG_MODE" in
 esac
 
 # --- выбор из интерфейса: тема и раскладки пишутся в настройки --------------------------------
-if [[ -n "$THEME$KB_MODE$KB_DEFAULT$CAPS$LAYOUTS" ]]; then
+if [[ -n "$THEME$KB_MODE$KB_DEFAULT$NUM$LAYOUTS" ]]; then
     say "Тема и раскладки"
     S_BIN="$PREFIX/bin/infinity-settings"
     export INFINITY_HYPRLAND_CONFIG_DIR="$CONF_DIR"
@@ -230,7 +230,7 @@ if [[ -n "$THEME$KB_MODE$KB_DEFAULT$CAPS$LAYOUTS" ]]; then
     [[ -n "$THEME" ]]      && "$S_BIN" --set theme "\"$THEME\""
     [[ -n "$KB_MODE" ]]    && "$S_BIN" --set keyboard.mode "\"$KB_MODE\""
     [[ -n "$KB_DEFAULT" ]] && "$S_BIN" --set keyboard.default_layout "$KB_DEFAULT"
-    [[ -n "$CAPS" ]]       && "$S_BIN" --set keyboard.caps_mode "\"$CAPS\""
+    [[ -n "$NUM" ]]       && "$S_BIN" --set keyboard.num_mode "\"$NUM\""
     if [[ -n "$LAYOUTS" ]]; then
         json="["
         IFS=, read -ra L <<< "$LAYOUTS"

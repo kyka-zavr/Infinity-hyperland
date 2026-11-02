@@ -27,18 +27,18 @@ CPolicy::eMode CPolicy::layoutMode() const {
     return std::string_view{*PMODE} == "per_window" ? eMode::PER_WINDOW : eMode::SYSTEM;
 }
 
-CPolicy::eMode CPolicy::capsMode() const {
-    static auto PMODE = CConfigValue<Config::STRING>("infinity:caps_mode");
+CPolicy::eMode CPolicy::numMode() const {
+    static auto PMODE = CConfigValue<Config::STRING>("infinity:num_mode");
     const auto  MODE  = std::string_view{*PMODE};
     return MODE == "per_window" ? eMode::PER_WINDOW : (MODE == "always" ? eMode::ALWAYS : eMode::SYSTEM);
 }
 
 // the state is read from xkb itself: the copy in m_modifiersState can lag behind right after a keymap rebuild
-static uint32_t capsBit(const SP<IKeyboard>& kb) {
+static uint32_t numBit(const SP<IKeyboard>& kb) {
     if (!kb || !kb->m_xkbKeymap)
         return 0;
 
-    const auto IDX = xkb_keymap_mod_get_index(kb->m_xkbKeymap, XKB_MOD_NAME_CAPS);
+    const auto IDX = xkb_keymap_mod_get_index(kb->m_xkbKeymap, XKB_MOD_NAME_NUM);
     return IDX == XKB_MOD_INVALID ? 0 : (sc<uint32_t>(1) << IDX);
 }
 
@@ -73,28 +73,28 @@ CPolicy::SWindowState& CPolicy::stateFor(PHLWINDOW window) {
     const auto FIRST = g_pInputManager->m_keyboards.empty() ? nullptr : g_pInputManager->m_keyboards.front();
 
     state.group = *PDEFAULT >= 0 ? std::min<uint32_t>(*PDEFAULT, layoutCount(FIRST) - 1) : groupNow(FIRST);
-    state.caps  = capsMode() == eMode::PER_WINDOW ? true : (lockedNow(FIRST) & capsBit(FIRST)) != 0;
+    state.num  = numMode() == eMode::PER_WINDOW ? true : (lockedNow(FIRST) & numBit(FIRST)) != 0;
 
     m_states.emplace_back(state);
     return m_states.back();
 }
 
-void CPolicy::apply(uint32_t group, bool caps, bool applyGroup, bool applyCaps) {
+void CPolicy::apply(uint32_t group, bool num, bool applyGroup, bool applyNum) {
     m_applying = true;
 
     for (const auto& kb : g_pInputManager->m_keyboards) {
         if (!kb || !kb->m_xkbState)
             continue;
 
-        const auto BIT        = capsBit(kb);
+        const auto BIT        = numBit(kb);
         const auto LOCKED_NOW = lockedNow(kb);
         const auto GROUP_NOW  = groupNow(kb);
 
         auto       locked = LOCKED_NOW;
         auto       grp    = GROUP_NOW;
 
-        if (applyCaps && BIT)
-            locked = caps ? (locked | BIT) : (locked & ~BIT);
+        if (applyNum && BIT)
+            locked = num ? (locked | BIT) : (locked & ~BIT);
         if (applyGroup)
             grp = std::min<uint32_t>(group, layoutCount(kb) - 1);
 
@@ -113,26 +113,26 @@ void CPolicy::onFocus(PHLWINDOW window) {
         return;
 
     const auto LM = layoutMode();
-    const auto CM = capsMode();
+    const auto CM = numMode();
     if (LM != eMode::PER_WINDOW && CM != eMode::PER_WINDOW)
         return;
 
     prune();
 
     const auto STATE = stateFor(window); // a copy: apply() never touches the list, but be safe about reallocations
-    apply(STATE.group, STATE.caps, LM == eMode::PER_WINDOW, CM == eMode::PER_WINDOW);
+    apply(STATE.group, STATE.num, LM == eMode::PER_WINDOW, CM == eMode::PER_WINDOW);
 }
 
 void CPolicy::onModifiers(const SP<IKeyboard>& keyboard) {
     if (m_applying || !keyboard)
         return;
 
-    const auto CM  = capsMode();
-    const auto BIT = capsBit(keyboard);
+    const auto CM  = numMode();
+    const auto BIT = numBit(keyboard);
 
     if (CM == eMode::ALWAYS) {
         if (BIT && !(lockedNow(keyboard) & BIT))
-            apply(0, true, false, true); // Caps Lock was switched off: put it back
+            apply(0, true, false, true); // Num Lock was switched off: put it back
         return;
     }
 
@@ -148,7 +148,7 @@ void CPolicy::onModifiers(const SP<IKeyboard>& keyboard) {
     if (LM == eMode::PER_WINDOW)
         state.group = groupNow(keyboard);
     if (CM == eMode::PER_WINDOW && BIT)
-        state.caps = (lockedNow(keyboard) & BIT) != 0;
+        state.num = (lockedNow(keyboard) & BIT) != 0;
 }
 
 void CPolicy::onKeymap(const SP<IKeyboard>& keyboard) {
@@ -156,7 +156,7 @@ void CPolicy::onKeymap(const SP<IKeyboard>& keyboard) {
         return;
 
     // a rebuilt keymap starts with clean locks and the first layout
-    if (capsMode() == eMode::ALWAYS)
+    if (numMode() == eMode::ALWAYS)
         apply(0, true, false, true);
     else if (const auto CURRENT = m_current.lock(); CURRENT)
         onFocus(CURRENT);

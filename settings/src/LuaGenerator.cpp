@@ -64,7 +64,7 @@ QString LuaGenerator::generate(const SettingsStore& store, const Theme& theme, c
     line("    zoom_step = " + num(store.get("infinity.zoom_step").toDouble(1.1)) + ",");
     line("    kb_layout_mode    = " + quote(store.get("keyboard.mode").toString("system")) + ",");
     line("    kb_default_layout = " + QString::number(store.get("keyboard.default_layout").toInt(-1)) + ",");
-    line("    caps_mode         = " + quote(store.get("keyboard.caps_mode").toString("normal")) + ",");
+    line("    num_mode         = " + quote(store.get("keyboard.num_mode").toString("normal")) + ",");
     line("    color_panel         = " + quote(theme.luaColor("panel")) + ",");
     line("    color_tile          = " + quote(theme.luaColor("surface")) + ",");
     line("    color_tile_selected = " + quote(theme.luaColor("surface_hi")) + ",");

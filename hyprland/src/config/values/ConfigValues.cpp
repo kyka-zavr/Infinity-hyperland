@@ -652,7 +652,7 @@ std::vector<SP<IValue>> Values::getConfigValues() {
         MS<Float>("infinity:zoom_step", "Zoom factor of one wheel notch in Infinity mode.", 1.1, {.min = 1.01, .max = 2}),
         MS<String>("infinity:kb_layout_mode", "Keyboard layout switching: \"system\" (one layout for the whole session) or \"per_window\" (every window remembers its own layout).", "system", {.refresh = Supplementary::REFRESH_INPUT_DEVICES}),
         MS<Int>("infinity:kb_default_layout", "In per_window mode: index of the layout (0 is the first) a new window starts with, -1 to inherit the current one.", -1, {.min = -1, .max = 31}),
-        MS<String>("infinity:caps_mode", "Caps Lock: \"normal\", \"per_window\" (on in new windows, remembered per window) or \"always\" (always on).", "normal", {.refresh = Supplementary::REFRESH_INPUT_DEVICES}),
+        MS<String>("infinity:num_mode", "Num Lock: \"normal\", \"per_window\" (on in new windows, remembered per window) or \"always\" (always on).", "normal", {.refresh = Supplementary::REFRESH_INPUT_DEVICES}),
         MS<Color>("infinity:color_panel", "Background of the Infinity panels (window switcher). Alpha is respected.", 0xf0121217),
         MS<Color>("infinity:color_tile", "Background of a tile in the window switcher.", 0xff1f1f26),
         MS<Color>("infinity:color_tile_selected", "Background of the selected tile in the window switcher.", 0xff292b38),

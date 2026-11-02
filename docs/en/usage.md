@@ -97,7 +97,7 @@ Hyprland 0.57 reads only Lua configs (`hyprland.lua`); the old `hyprland.conf` f
 `SUPER+I` opens **Infinity Settings** (a Qt6 application; also `infinity-settings` from a terminal or a launcher). Changes apply as you make them. Pages:
 
 - **Infinity**: toggle the mode, zoom step, the keys for wheel zoom and mouse panning.
-- **Keyboard**: add layouts (all xkb languages and variants), order them, choose shared or per-window layout, the layout of a new window and the Caps Lock mode.
+- **Keyboard**: add layouts (all xkb languages and variants), order them, choose shared or per-window layout, the layout of a new window and the Num Lock mode.
 - **Appearance**: the color scheme and every color in it, plus (optionally) gaps, border size, rounding, blur and shadows.
 - **Keybinds**: see below.
 - **System**: volume (`wpctl`), brightness (`brightnessctl`), Wi-Fi (`nmcli`); a control is greyed out when its tool is missing.
@@ -143,13 +143,13 @@ hl.config({ infinity = {
     kb_layout_mode    = "per_window",  -- "system": one layout for the whole session (usual Hyprland)
                                        -- "per_window": every window remembers its own layout, like Windows
     kb_default_layout = 0,             -- per_window: layout a NEW window starts with (0 = the first); -1 keeps the current one
-    caps_mode         = "normal",      -- "normal": unchanged
-                                       -- "per_window": Caps Lock is ON in new windows, can be toggled, remembered per window
-                                       -- "always": Caps Lock is always on, everywhere
+    num_mode         = "normal",      -- "normal": unchanged
+                                       -- "per_window": Num Lock is ON in new windows, can be toggled, remembered per window
+                                       -- "always": Num Lock is always on, everywhere
 } })
 ```
 
-Layout and Caps Lock are independent: `kb_layout_mode` and `kb_default_layout` never touch Caps Lock, `caps_mode` never touches the layout. In per_window mode the layout is also remembered when you change it with the usual XKB keys (for example `grp:alt_shift_toggle`), not only with `kblayout`.
+Layout and Num Lock are independent: `kb_layout_mode` and `kb_default_layout` never touch Num Lock, `num_mode` never touches the layout. In per_window mode the layout is also remembered when you change it with the usual XKB keys (for example `grp:alt_shift_toggle`), not only with `kblayout`.
 
 ## Known limitations
 

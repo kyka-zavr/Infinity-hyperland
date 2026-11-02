@@ -9,7 +9,7 @@
 - Installer for Arch Linux: private prefix, login entry, isolated config (copy of the Hyprland config or fresh), uninstall.
 - Upstream updates: the sync script, a daily check on GitHub, and the port from Hyprland 0.56.2 to 0.57.0.
 - Bilingual documentation (English and Russian).
-- Keyboard layouts (per window, default layout, Caps Lock modes), the settings window with one color palette and a bind editor, a text installer ([design-settings.md](design-settings.md)).
+- Keyboard layouts (per window, default layout, Num Lock modes), the settings window with one color palette and a bind editor, a text installer ([design-settings.md](design-settings.md)).
 
 ## Known issues
 

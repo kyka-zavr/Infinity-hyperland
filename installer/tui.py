@@ -72,12 +72,12 @@ class State:
         self.layouts = []            # [(code, variant, name)]
         self.kb_mode = "system"
         self.kb_default = -1
-        self.caps = "normal"
+        self.num = "normal"
         self.theme = "dark"
 
     def args(self):
         a = ["--plain", "--yes", "--config", self.config, "--prefix", self.prefix, "--theme", self.theme,
-             "--kb-mode", self.kb_mode, "--kb-default", str(self.kb_default), "--caps", self.caps]
+             "--kb-mode", self.kb_mode, "--kb-default", str(self.kb_default), "--num", self.num]
         if self.jobs != "auto":
             a += ["--jobs", str(self.jobs)]
         if not self.install_deps:
@@ -473,10 +473,10 @@ class Typing(Page):
                  Radio("Keep the current one", lambda: s.kb_default, lambda v: setattr(s, "kb_default", v), -1)]
         for i, (c, v, n) in enumerate(s.layouts):
             items.append(Radio(n, lambda: s.kb_default, lambda v2: setattr(s, "kb_default", v2), i))
-        items += [Label(""), Label("Caps Lock", ACCENT),
-                  Radio("Normal", lambda: s.caps, lambda v: setattr(s, "caps", v), "normal"),
-                  Radio("Per window: on in new windows, remembered for each window", lambda: s.caps, lambda v: setattr(s, "caps", v), "per_window"),
-                  Radio("Always on, everywhere", lambda: s.caps, lambda v: setattr(s, "caps", v), "always")]
+        items += [Label(""), Label("Num Lock", ACCENT),
+                  Radio("Normal", lambda: s.num, lambda v: setattr(s, "num", v), "normal"),
+                  Radio("Per window: on in new windows, remembered for each window", lambda: s.num, lambda v: setattr(s, "num", v), "per_window"),
+                  Radio("Always on, everywhere", lambda: s.num, lambda v: setattr(s, "num", v), "always")]
         return items
 
 
@@ -503,7 +503,7 @@ class Summary(Page):
                 Label(f"Install into:   {s.prefix}"), Label(f"Config:         {modes[s.config]}"),
                 Label(f"Languages:      {lay}"),
                 Label(f"Layout mode:    {'per window' if s.kb_mode == 'per_window' else 'shared'}"),
-                Label(f"Caps Lock:      {s.caps.replace('_', ' ')}"), Label(f"Color scheme:   {s.theme}"),
+                Label(f"Num Lock:      {s.num.replace('_', ' ')}"), Label(f"Color scheme:   {s.theme}"),
                 Label(f"Threads:        {s.jobs}"), Label(""),
                 Label("The installer window closes and the build runs in this terminal (sudo may ask for a password).", DIM)]
 
@@ -742,21 +742,21 @@ def selftest():
         app.key(10)
     codes = [c for c, _, _ in app.state.layouts]
     assert codes[-2:] == ["ru", "us"], codes
-    # Typing page: per-window mode, caps per window
+    # Typing page: per-window mode, num per window
     app.next()
     app.draw(cv)
     assert app.page.title == "Typing"
     app.click(*[(it.rect[0], it.rect[1]) for it in app.page.items if isinstance(it, Radio) and it.value == "per_window"][0:1][0])
     cap = [it for it in app.page.items if isinstance(it, Radio) and it.value == "per_window"][1]
     app.click(cap.rect[0], cap.rect[1])
-    assert app.state.kb_mode == "per_window" and app.state.caps == "per_window", (app.state.kb_mode, app.state.caps)
+    assert app.state.kb_mode == "per_window" and app.state.num == "per_window", (app.state.kb_mode, app.state.num)
     # theme + summary
     app.next(); app.next()
     app.draw(cv)
     assert app.page.title == "Ready to install"
     args = app.state.args()
     assert "--layouts" in args and args[args.index("--layouts") + 1] == "ru,us", args
-    assert args[args.index("--kb-mode") + 1] == "per_window" and args[args.index("--caps") + 1] == "per_window"
+    assert args[args.index("--kb-mode") + 1] == "per_window" and args[args.index("--num") + 1] == "per_window"
     assert "--plain" in args and "--yes" in args
     # validation: a relative install folder blocks Next
     app.goto(1)

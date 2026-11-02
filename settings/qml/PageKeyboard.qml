@@ -71,14 +71,14 @@ Column {
     }
 
     Card {
-        title: "Caps Lock"
+        title: "Num Lock"
         SettingRow {
             title: "Behaviour"
             subtitle: "Normal: unchanged. Per window: on in new windows, can be toggled, remembered for each window. Always on: everywhere."
             Segmented {
                 model: [{value: "normal", label: "Normal"}, {value: "per_window", label: "Per window"}, {value: "always", label: "Always on"}]
-                value: { page.rev; return Backend.get("keyboard.caps_mode") }
-                onPicked: (v) => Backend.set("keyboard.caps_mode", v)
+                value: { page.rev; return Backend.get("keyboard.num_mode") }
+                onPicked: (v) => Backend.set("keyboard.num_mode", v)
             }
         }
     }

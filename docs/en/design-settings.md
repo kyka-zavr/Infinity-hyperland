@@ -26,7 +26,7 @@ All colors of everything we draw (window switcher, settings window, window borde
 A Qt6/QML application, `infinity-settings` (a C++ backend plus QML pages), started by a bind. It is an ordinary Wayland client (floating, centered), not part of the compositor. Pages:
 
 - **Infinity**: mode, zoom, zoom step, pan modifiers.
-- **Keyboard**: layouts, per-window mode, default layout for new windows, Caps Lock mode.
+- **Keyboard**: layouts, per-window mode, default layout for new windows, Num Lock mode.
 - **Appearance**: theme and colors, borders, gaps, rounding, blur, shadows.
 - **Switcher**: tile size, previews on/off, confirm key.
 - **System**: volume, brightness, network (through `wpctl`, `brightnessctl`, `nmcli` when present).
@@ -44,7 +44,7 @@ Three layers, all in `settings.json`:
 
 ## Keyboard layouts in the installer
 
-The installer becomes a TUI (Python `curses`; keyboard first, mouse where the terminal provides it: xterm mouse reporting in terminal emulators, `gpm` in a bare TTY). Its keyboard page writes the same `settings.json` (layout list from `/usr/share/X11/xkb/rules/evdev.lst`, switching mode, default layout, Caps mode) and calls `infinity-hyprland-apply`.
+The installer becomes a TUI (Python `curses`; keyboard first, mouse where the terminal provides it: xterm mouse reporting in terminal emulators, `gpm` in a bare TTY). Its keyboard page writes the same `settings.json` (layout list from `/usr/share/X11/xkb/rules/evdev.lst`, switching mode, default layout, Num mode) and calls `infinity-hyprland-apply`.
 
 ## Multi-monitor rework
 

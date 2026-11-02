@@ -13,7 +13,7 @@ QJsonObject SettingsStore::defaults() {
   "version": 1,
   "theme": "dark",
   "infinity": { "pan_mods": "SUPER ALT", "zoom_mods": "CTRL", "zoom_step": 1.1 },
-  "keyboard": { "layouts": [], "mode": "system", "default_layout": -1, "caps_mode": "normal" },
+  "keyboard": { "layouts": [], "mode": "system", "default_layout": -1, "num_mode": "normal" },
   "appearance": { "enabled": false, "theme_borders": true, "gaps_in": 5, "gaps_out": 20, "border_size": 2, "rounding": 10, "blur": true, "shadow": true },
   "binds": { "keys": {}, "disabled": [], "custom": [], "overrides": [] },
   "export": { "post_command": "" }

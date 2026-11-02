@@ -33,7 +33,7 @@ New module `switcher/`:
 
 ## Keyboard policy
 
-`keyboard/KeyboardPolicy.*` sits on top of `IKeyboard::updateModifiers`, the one place every layout switch and lock change goes through. It remembers the layout and Caps Lock state per window (`infinity:kb_layout_mode`, `kb_default_layout`, `caps_mode`), applies them on focus changes (`window.active` event), and in "always" mode puts Caps Lock back whenever it is switched off. Hooks: the `modifiers` and `keymap` keyboard events in `managers/input/InputManager.cpp`, the `kblayout` layout message in `config/shared/actions/ConfigActions.cpp`.
+`keyboard/KeyboardPolicy.*` sits on top of `IKeyboard::updateModifiers`, the one place every layout switch and lock change goes through. It remembers the layout and Num Lock state per window (`infinity:kb_layout_mode`, `kb_default_layout`, `num_mode`), applies them on focus changes (`window.active` event), and in "always" mode puts Num Lock back whenever it is switched off. Hooks: the `modifiers` and `keymap` keyboard events in `managers/input/InputManager.cpp`, the `kblayout` layout message in `config/shared/actions/ConfigActions.cpp`.
 
 ## Settings, palette and binds
 
