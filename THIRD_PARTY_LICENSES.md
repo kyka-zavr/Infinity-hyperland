@@ -38,13 +38,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Это текст из `hyprland/LICENSE` (первая строка copyright, вторая добавлена нами для изменений).
 
-## hyprutils, aquamarine, hyprgraphics, hyprcursor, hyprwayland-scanner, hyprland-protocols
+## hyprutils, aquamarine, hyprgraphics, hyprcursor, hyprwire, hyprwayland-scanner, hyprland-protocols
 
 BSD 3-Clause, Copyright (c) 2022 / 2024, Hypr Development. Текст совпадает с приведённым выше, с другой строкой copyright. Библиотеки не входят в этот репозиторий, ставятся из системы.
 
 ## hyprlang
 
-GNU Lesser General Public License v3.0 (https://www.gnu.org/licenses/lgpl-3.0.html). Не входит в репозиторий, подключается как системная динамическая библиотека. Подробности: [docs/02-licensing.md](docs/02-licensing.md).
+GNU Lesser General Public License v3.0 (https://www.gnu.org/licenses/lgpl-3.0.html). Не входит в репозиторий, подключается как системная динамическая библиотека. Подробности: [docs/en/licensing.md](docs/en/licensing.md), [docs/ru/licensing.md](docs/ru/licensing.md).
 
 ## udis86
 

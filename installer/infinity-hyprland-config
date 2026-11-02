@@ -5,7 +5,7 @@
 #   infinity-hyprland-config fresh [--force] [--quiet]
 #       создаёт стандартный конфиг из примера (с бинами Infinity)
 #   infinity-hyprland-config copy-hyprland [--from DIR] [--force] [--quiet]
-#       копирует в свой каталог конфиг Hyprland (главный файл и файлы, на которые он ссылается) и добавляет бинды Infinity
+#       копирует в свой каталог конфиг Hyprland (hyprland.lua) (главный файл и файлы, на которые он ссылается) и добавляет бинды Infinity
 #   infinity-hyprland-config status
 set -euo pipefail
 
@@ -20,9 +20,8 @@ quiet=0; force=0; src="$SRC_DEFAULT"
 say() { [[ $quiet -eq 1 ]] || printf '%s\n' "$*"; }
 die() { printf 'infinity-hyprland-config: %s\n' "$*" >&2; exit 1; }
 
-main_config() { # <каталог> -> путь к hyprland.lua или hyprland.conf
-    local d="$1" n
-    for n in hyprland.lua hyprland.conf; do [[ -f "$d/$n" ]] && { printf '%s' "$d/$n"; return 0; }; done
+main_config() { # <каталог> -> путь к hyprland.lua (Hyprland 0.57+ читает только Lua-конфиг)
+    [[ -f "$1/hyprland.lua" ]] && { printf '%s' "$1/hyprland.lua"; return 0; }
     return 1
 }
 
@@ -37,8 +36,7 @@ guard_existing() {
 }
 
 append_binds() { # <главный файл>
-    local f="$1" snippet
-    case "$f" in *.lua) snippet="$SHARE/infinity-binds.lua" ;; *) snippet="$SHARE/infinity-binds.conf" ;; esac
+    local f="$1" snippet="$SHARE/infinity-binds.lua"
     [[ -f "$snippet" ]] || die "нет файла $snippet"
     if grep -q "$MARK" "$f"; then say "Бинды Infinity уже добавлены в $(basename "$f")"; return; fi
     { printf '\n'; cat "$snippet"; } >> "$f"
@@ -54,7 +52,11 @@ cmd_fresh() {
 
 cmd_copy() {
     [[ -d "$src" ]] || die "нет каталога с конфигом Hyprland: $src"
-    local main; main=$(main_config "$src") || die "в $src нет hyprland.lua или hyprland.conf"
+    local main
+    if ! main=$(main_config "$src"); then
+        [[ -f "$src/hyprland.conf" ]] && die "в $src только hyprland.conf: Hyprland 0.57 читает конфиг только в формате Lua (hyprland.lua), перенесите конфиг на Lua или используйте режим fresh"
+        die "в $src нет hyprland.lua"
+    fi
     guard_existing
     mkdir -p "$DEST"
 

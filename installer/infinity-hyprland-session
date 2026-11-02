@@ -14,12 +14,9 @@ export XDG_SESSION_DESKTOP="Infinity-hyprland"
 export XDG_SESSION_TYPE="wayland"
 
 if [ -z "$HYPRLAND_CONFIG" ]; then
-    for name in hyprland.lua hyprland.conf; do
-        if [ -f "$CONFDIR/$name" ]; then
-            HYPRLAND_CONFIG="$CONFDIR/$name"
-            break
-        fi
-    done
+    if [ -f "$CONFDIR/hyprland.lua" ]; then
+        HYPRLAND_CONFIG="$CONFDIR/hyprland.lua"
+    fi
 fi
 
 # конфига ещё нет (установщик не запускали для этого пользователя): создаём стандартный, ничего чужого не трогая

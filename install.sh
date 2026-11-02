@@ -90,11 +90,11 @@ fi
 
 # --- сборка -------------------------------------------------------------------------------------
 if [[ -z "$JOBS" ]]; then
-    # сборка Hyprland жрёт около 2 ГБ памяти на поток: безопасный предел по свободной памяти
-    mem_gb=$(awk '/MemAvailable/ {printf "%d", $2/1048576}' /proc/meminfo)
+    # сборка Hyprland занимает около 2 ГБ памяти на поток: считаем по общей памяти, не больше 6 потоков и не больше числа ядер
+    mem_gb=$(awk '/MemTotal/ {printf "%d", $2/1048576}' /proc/meminfo)
     JOBS=$(( mem_gb / 2 )); (( JOBS < 1 )) && JOBS=1
     (( JOBS > $(nproc) )) && JOBS=$(nproc)
-    (( JOBS > 4 )) && JOBS=4
+    (( JOBS > 6 )) && JOBS=6
 fi
 
 BUILD="$ROOT/build"
@@ -111,7 +111,10 @@ if [[ $DO_BUILD -eq 1 ]]; then
     say "Сборка (потоков: $JOBS)"
     if command -v systemd-run >/dev/null; then
         # лимит памяти, чтобы сборка не положила систему
-        systemd-run --user --scope -q -p MemoryMax="$(( JOBS * 2 + 2 ))G" -p MemorySwapMax=0 nice -n 19 cmake --build "$BUILD" -j"$JOBS"
+        limit_mb=$(( JOBS * 2048 + 2048 ))
+        total_mb=$(awk '/MemTotal/ {printf "%d", $2/1024}' /proc/meminfo)
+        (( limit_mb > total_mb * 85 / 100 )) && limit_mb=$(( total_mb * 85 / 100 ))
+        systemd-run --user --scope -q -p MemoryMax="${limit_mb}M" -p MemorySwapMax=0 nice -n 19 cmake --build "$BUILD" -j"$JOBS"
     else
         nice -n 19 cmake --build "$BUILD" -j"$JOBS"
     fi
@@ -131,7 +134,6 @@ subst "$ROOT/installer/infinity-hyprland.desktop" > "$tmp/infinity-hyprland.desk
 run_priv "$PREFIX" install -Dm755 "$tmp/infinity-hyprland-session" "$PREFIX/bin/infinity-hyprland-session"
 run_priv "$PREFIX" install -Dm755 "$tmp/infinity-hyprland-config"  "$PREFIX/bin/infinity-hyprland-config"
 run_priv "$PREFIX" install -Dm644 "$ROOT/installer/share/infinity-binds.lua"  "$PREFIX/share/infinity-hyprland/infinity-binds.lua"
-run_priv "$PREFIX" install -Dm644 "$ROOT/installer/share/infinity-binds.conf" "$PREFIX/share/infinity-hyprland/infinity-binds.conf"
 
 say "Пункт «Infinity-hyprland» в экране входа"
 run_priv "$SESSION_DIR" install -Dm644 "$tmp/infinity-hyprland.desktop" "$SESSION_DIR/infinity-hyprland.desktop"
@@ -141,7 +143,7 @@ CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/infinity-hyprland"
 CFG="$PREFIX/bin/infinity-hyprland-config"
 
 if [[ -z "$CONFIG_MODE" ]]; then
-    if [[ -e "$CONF_DIR/hyprland.lua" || -e "$CONF_DIR/hyprland.conf" ]]; then
+    if [[ -e "$CONF_DIR/hyprland.lua" ]]; then
         CONFIG_MODE=skip
         echo "В $CONF_DIR уже есть конфиг, он остаётся как есть."
     elif [[ $ASSUME_YES -eq 1 ]]; then

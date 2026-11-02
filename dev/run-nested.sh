@@ -7,7 +7,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 bin="$root/build/InfinityHyprland"
 
 if [[ ! -x "$bin" ]]; then
-    echo "Нет $bin. Сначала соберите проект (docs/04-roadmap.md)." >&2
+    echo "Нет $bin. Сначала соберите проект (docs/ru/installation.md)." >&2
     exit 1
 fi
 if [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
