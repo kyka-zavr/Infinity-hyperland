@@ -1,5 +1,7 @@
 # Infinity-hyperland
 
+<p align="center"><img src="assets/logo/mark-dark.svg" width="180" alt="Infinity-hyperland"></p>
+
 [English](README.md) | [Русский](README.ru.md)
 
 > **Это форк [Hyprland](https://github.com/hyprwm/Hyprland), а не оригинальный проект.**
