@@ -81,7 +81,7 @@ if [[ $UNINSTALL -eq 1 ]]; then
     [[ -d "$PREFIX" || -f "$SESSION_DIR/infinity-hyprland.desktop" ]] || { echo "Нечего удалять."; exit 0; }
     confirm "Удалить $PREFIX и пункт входа?" || exit 1
     [[ -f "$SESSION_DIR/infinity-hyprland.desktop" ]] && run_priv "$SESSION_DIR/infinity-hyprland.desktop" rm -f "$SESSION_DIR/infinity-hyprland.desktop"
-    [[ -d "$PREFIX" ]] && run_priv "$PREFIX" rm -rf "$PREFIX"
+    [[ -d "$PREFIX" ]] && run_priv "$(dirname "$PREFIX")" rm -rf "$PREFIX"
     echo "Готово. Конфиги (~/.config/infinity-hyprland) и обычный Hyprland не затронуты."
     exit 0
 fi
@@ -157,7 +157,7 @@ STAGE="$(mktemp -d)"
 DESTDIR="$STAGE" cmake --install "$BUILD" --prefix "$PREFIX" >/dev/null
 # при обновлении наш каталог (на нём метка) заменяется целиком, чтобы не оставались файлы прошлой версии
 if [[ $IS_OURS -eq 1 ]]; then
-    run_priv "$PREFIX" rm -rf "$PREFIX"
+    run_priv "$(dirname "$PREFIX")" rm -rf "$PREFIX"
 fi
 run_priv "$PREFIX" mkdir -p "$PREFIX"
 run_priv "$PREFIX" cp -a "$STAGE$PREFIX/." "$PREFIX/"
