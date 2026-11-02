@@ -86,6 +86,21 @@ if [[ $UNINSTALL -eq 1 ]]; then
     exit 0
 fi
 
+# --- установка или обновление ---------------------------------------------------------------
+NEW_VERSION="$(cat "$ROOT/hyprland/VERSION" 2>/dev/null || echo '?')-infinity $(git -C "$ROOT" describe --tags --always 2>/dev/null || echo)"
+PREV_VERSION=""
+IS_OURS=0   # наш каталог: есть метка или файлы, которые кладёт только этот установщик (установка старым установщиком метки не имеет)
+if [[ -f "$PREFIX/.infinity-hyprland" || -x "$PREFIX/bin/infinity-hyprland-session" ]]; then
+    IS_OURS=1
+    PREV_VERSION="$(sed -n 's/^version=//p' "$PREFIX/.infinity-hyprland" 2>/dev/null | head -1)"
+    [[ -n "$PREV_VERSION" ]] || PREV_VERSION="(более старая установка, версия неизвестна)"
+fi
+if [[ -n "$PREV_VERSION" ]]; then
+    say "Обновление: $PREV_VERSION -> $NEW_VERSION (каталог $PREFIX будет заменён целиком, конфиги остаются)"
+else
+    say "Новая установка: $NEW_VERSION"
+fi
+
 command -v pacman >/dev/null || warn "pacman не найден: установщик рассчитан на Arch. Зависимости придётся поставить вручную (--no-deps)."
 
 # --- зависимости ---------------------------------------------------------------------------------
@@ -140,9 +155,16 @@ say "Установка в $PREFIX"
 # (иначе там остаётся файл root, о который спотыкается следующий запуск)
 STAGE="$(mktemp -d)"
 DESTDIR="$STAGE" cmake --install "$BUILD" --prefix "$PREFIX" >/dev/null
+# при обновлении наш каталог (на нём метка) заменяется целиком, чтобы не оставались файлы прошлой версии
+if [[ $IS_OURS -eq 1 ]]; then
+    run_priv "$PREFIX" rm -rf "$PREFIX"
+fi
 run_priv "$PREFIX" mkdir -p "$PREFIX"
 run_priv "$PREFIX" cp -a "$STAGE$PREFIX/." "$PREFIX/"
 rm -rf "$STAGE"
+printf 'version=%s\ninstalled=%s\n' "$NEW_VERSION" "$(date -Iseconds)" > "$STAGE.marker"
+run_priv "$PREFIX" install -Dm644 "$STAGE.marker" "$PREFIX/.infinity-hyprland"
+rm -f "$STAGE.marker"
 
 say "Окно настроек (Qt6)"
 SBUILD="$ROOT/build-settings"
@@ -223,7 +245,7 @@ if [[ -n "$THEME$KB_MODE$KB_DEFAULT$CAPS$LAYOUTS" ]]; then
     unset INFINITY_HYPRLAND_CONFIG_DIR
 fi
 
-say "Готово"
+say "Готово ($([[ -n "$PREV_VERSION" ]] && echo "обновлено с $PREV_VERSION" || echo "новая установка"))"
 cat <<MSG
   Композитор:  $PREFIX/bin/InfinityHyprland
   Вход:        выберите «Infinity-hyprland» в экране входа (SDDM, GDM и т.д.)

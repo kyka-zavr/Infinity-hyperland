@@ -45,6 +45,21 @@ def read_layouts(path="/usr/share/X11/xkb/rules/evdev.lst"):
     return sorted(((c, n, variants.get(c, [])) for c, n in names.items()), key=lambda x: x[1].lower())
 
 
+def installed_version(prefix):
+    """The version of an existing installation (from the marker the installer writes), or None."""
+    try:
+        with open(os.path.join(prefix, ".infinity-hyprland"), encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("version="):
+                    return line.split("=", 1)[1].strip() or "unknown"
+    except OSError:
+        pass
+    # an older installer wrote no marker, but it left its session wrapper
+    if os.access(os.path.join(prefix, "bin", "infinity-hyprland-session"), os.X_OK):
+        return "an older version"
+    return None
+
+
 class State:
     """Everything the user chooses."""
 
@@ -364,7 +379,10 @@ class Welcome(Page):
     title = "Infinity-hyprland"
 
     def build(self):
-        return [Label("A Hyprland fork with an infinite canvas and an Alt-Tab window switcher.", NORMAL), Label(""),
+        prev = installed_version(self.s.prefix)
+        mode = [Label(f"Found an installation: {prev}. This run will UPDATE it; your config is kept.", ACCENT), Label("")] if prev else \
+               [Label("No installation found: this is a fresh install.", ACCENT), Label("")]
+        return mode + [Label("A Hyprland fork with an infinite canvas and an Alt-Tab window switcher.", NORMAL), Label(""),
                 Label("This installer will:", NORMAL),
                 Label("  - install it into its own folder; your Hyprland is not touched", DIM),
                 Label("  - add \"Infinity-hyprland\" to the login screen", DIM),
@@ -480,7 +498,9 @@ class Summary(Page):
         s = self.s
         lay = ", ".join(n for _, _, n in s.layouts) or "(your own settings)"
         modes = {"copy": "copy of my Hyprland config", "fresh": "clean config", "skip": "set up by myself"}
-        return [Label(f"Install into:   {s.prefix}"), Label(f"Config:         {modes[s.config]}"),
+        prev = installed_version(s.prefix)
+        return [Label(f"This is:        {'an update of ' + prev if prev else 'a fresh install'}"),
+                Label(f"Install into:   {s.prefix}"), Label(f"Config:         {modes[s.config]}"),
                 Label(f"Languages:      {lay}"),
                 Label(f"Layout mode:    {'per window' if s.kb_mode == 'per_window' else 'shared'}"),
                 Label(f"Caps Lock:      {s.caps.replace('_', ' ')}"), Label(f"Color scheme:   {s.theme}"),
