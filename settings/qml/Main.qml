@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Shapes
 import Infinity
 
 ApplicationWindow {
@@ -31,8 +32,21 @@ ApplicationWindow {
         color: Style.panel
         Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Style.line }
 
-        Text { id: brand; text: "Infinity"; color: Style.text; font.pixelSize: 20; font.bold: true; x: 22; y: 22 }
-        Text { anchors.top: brand.bottom; x: 22; text: "settings"; color: Style.subtext; font.pixelSize: 11; font.letterSpacing: 1.5 }
+        // the logo as a vector shape, filled with the palette text colour
+        Shape {
+            id: brand
+            x: 22; y: 24
+            width: 120; height: 36
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                fillColor: Style.text
+                strokeColor: "transparent"
+                fillRule: ShapePath.OddEvenFill
+                scale: Qt.size(120 / 180, 120 / 180)
+                PathSvg { path: "M90 27C62 -9 0 -9 0 27C0 63 62 63 90 27C118 63 180 63 180 27C180 -9 118 -9 90 27ZM90 27C61 -2 20 3 20 27C20 51 61 56 90 27C110 47 160 51 160 27C160 3 110 7 90 27Z" }
+            }
+        }
+        Text { anchors.top: brand.bottom; anchors.topMargin: 8; x: 22; text: "settings"; color: Style.subtext; font.pixelSize: 11; font.letterSpacing: 1.5 }
 
         Column {
             anchors.top: parent.top; anchors.topMargin: 88
