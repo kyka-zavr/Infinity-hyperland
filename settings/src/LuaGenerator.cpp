@@ -107,6 +107,15 @@ QString LuaGenerator::generate(const SettingsStore& store, const Theme& theme, c
         line();
     }
 
+    // --- the settings window: floating, centered
+    line(R"(hl.window_rule({ name = "infinity-settings", match = { class = "^infinity-settings$" }, float = true, center = true, size = "1040 720" }))");
+    line();
+
+    // a submap without real binds (a submap exists only once it has one: this one never matches): while the settings window
+    // captures a key, no global bind fires
+    line(R"(hl.define_submap("infinity_capture", function() hl.bind("SUPER + CTRL + ALT + SHIFT + F24", hl.dsp.exec_cmd("true")) end))");
+    line();
+
     // --- binds that belong to the fork
     const auto DISABLED = store.get("binds.disabled").toArray();
     line("-- binds of the fork");

@@ -27,6 +27,13 @@ fi
 
 [ -n "$HYPRLAND_CONFIG" ] && export HYPRLAND_CONFIG
 
+# бинды, раскладки и цвета форка генерируются из настроек: обновляем перед запуском
+SETTINGS="${INFINITY_HYPRLAND_SETTINGS:-$PREFIX/bin/infinity-settings}"
+if [ -x "$SETTINGS" ]; then
+    INFINITY_HYPRLAND_CONFIG_DIR="$CONFDIR" "$SETTINGS" --init >/dev/null 2>&1
+    INFINITY_HYPRLAND_CONFIG_DIR="$CONFDIR" "$SETTINGS" --apply --no-reload >/dev/null 2>&1
+fi
+
 # start-hyprland перезапускает композитор в безопасном режиме после сбоя
 if [ -x "$START" ]; then
     exec "$START" --path "$BIN"

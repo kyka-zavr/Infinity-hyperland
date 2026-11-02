@@ -6,6 +6,8 @@
 #       создаёт стандартный конфиг из примера (с бинами Infinity)
 #   infinity-hyprland-config copy-hyprland [--from DIR] [--force] [--quiet]
 #       копирует в свой каталог конфиг Hyprland (hyprland.lua) (главный файл и файлы, на которые он ссылается) и добавляет бинды Infinity
+#   infinity-hyprland-config migrate
+#       переводит конфиг со старым блоком бинд Infinity на настройки (клавиши переносятся)
 #   infinity-hyprland-config status
 set -euo pipefail
 
@@ -36,10 +38,18 @@ guard_existing() {
 }
 
 append_binds() { # <главный файл>
-    local f="$1" snippet="$SHARE/infinity-binds.lua"
+    local f="$1" snippet="$SHARE/infinity-include.lua"
     [[ -f "$snippet" ]] || die "нет файла $snippet"
-    if grep -q "$MARK" "$f"; then say "Бинды Infinity уже добавлены в $(basename "$f")"; return; fi
+    if grep -q "$MARK" "$f"; then say "Подключение Infinity уже есть в $(basename "$f")"; return; fi
     { printf '\n'; cat "$snippet"; } >> "$f"
+}
+
+# настройки и сгенерированный infinity.lua (бинды, раскладки, цвета)
+init_settings() {
+    local tool="${INFINITY_HYPRLAND_SETTINGS:-$PREFIX/bin/infinity-settings}"
+    [[ -x "$tool" ]] || return 0
+    INFINITY_HYPRLAND_CONFIG_DIR="$DEST" "$tool" --init >/dev/null 2>&1 || true
+    INFINITY_HYPRLAND_CONFIG_DIR="$DEST" "$tool" --apply --no-reload >/dev/null 2>&1 || true
 }
 
 cmd_fresh() {
@@ -47,7 +57,8 @@ cmd_fresh() {
     [[ -f "$EXAMPLE" ]] || die "нет примера конфига: $EXAMPLE"
     mkdir -p "$DEST"
     cp "$EXAMPLE" "$DEST/hyprland.lua"
-    say "Создан $DEST/hyprland.lua (бинды Infinity уже внутри)"
+    init_settings
+    say "Создан $DEST/hyprland.lua (бинды, раскладки и цвета Infinity берутся из настроек, SUPER+I)"
 }
 
 cmd_copy() {
@@ -95,8 +106,53 @@ cmd_copy() {
     done
 
     append_binds "$DEST/${main#"$src"/}"
+    init_settings
     say "Скопировано из $src в $DEST: ${copied[*]}"
     say "Оригинал не изменён. Другие файлы Hyprland (hyprlock, hypridle, hyprpaper и т.д.) читаются своими программами из ~/.config/hypr как раньше."
+}
+
+# старый блок с бинды (hl.bind внутри >>> infinity-hyprland) -> подключение сгенерированного файла;
+# клавиши, которые вы меняли, переносятся в settings.json
+cmd_migrate() {
+    local main; main=$(main_config "$DEST") || die "в $DEST нет конфига"
+    grep -q "$MARK" "$main" || { say "Нечего переносить: блока Infinity в $(basename "$main") нет"; return 0; }
+    sed -n "/$MARK/,/<<< infinity-hyprland/p" "$main" | grep -q 'hl\.bind' || { say "Блок уже нового вида"; init_settings; return 0; }
+    command -v python3 >/dev/null || die "для переноса нужен python3"
+
+    local tool="${INFINITY_HYPRLAND_SETTINGS:-$PREFIX/bin/infinity-settings}"
+    local bak="$main.bak-$(date +%Y%m%d-%H%M%S)"
+    cp -a "$main" "$bak"
+
+    local keys_json
+    keys_json=$(python3 - "$main" "$SHARE/infinity-include.lua" <<'PY'
+import json, re, sys
+path, include = sys.argv[1], sys.argv[2]
+text = open(path).read()
+start = text.index(">>> infinity-hyprland")
+start = text.rfind("\n", 0, start) + 1
+end_marker = "<<< infinity-hyprland"
+end = text.index(end_marker)
+end = text.index("\n", end) + 1 if "\n" in text[end:] else len(text)
+block = text[start:end]
+
+ids = {"infinity toggle": "infinity_toggle", "alttab": "switcher_next", "alttab prev": "switcher_prev", "kblayout next": "layout_next",
+       "infinity pan 150 0": "pan_left", "infinity pan -150 0": "pan_right", "infinity pan 0 150": "pan_up", "infinity pan 0 -150": "pan_down",
+       "infinity zoom 1.25": "zoom_in", "infinity zoom 0.8": "zoom_out"}
+keys = {}
+for m in re.finditer(r'hl\.bind\("([^"]+)",\s*hl\.dsp\.layout\("([^"]+)"\)', block):
+    if m.group(2) in ids:
+        keys[ids[m.group(2)]] = m.group(1)
+
+open(path, "w").write(text[:start] + open(include).read() + text[end:])
+print(json.dumps(keys))
+PY
+)
+    if [[ -x "$tool" && -n "$keys_json" && "$keys_json" != "{}" ]]; then
+        INFINITY_HYPRLAND_CONFIG_DIR="$DEST" "$tool" --init >/dev/null 2>&1 || true
+        INFINITY_HYPRLAND_CONFIG_DIR="$DEST" "$tool" --set binds.keys "$keys_json" >/dev/null 2>&1 || true
+    fi
+    init_settings
+    say "Конфиг переведён на настройки Infinity. Ваши клавиши перенесены в settings.json, резервная копия: $bak"
 }
 
 cmd_status() {
@@ -118,6 +174,7 @@ done
 case "$cmd" in
     fresh) cmd_fresh ;;
     copy-hyprland) cmd_copy ;;
+    migrate) cmd_migrate ;;
     status) cmd_status ;;
-    *) die "команды: fresh, copy-hyprland, status" ;;
+    *) die "команды: fresh, copy-hyprland, migrate, status" ;;
 esac

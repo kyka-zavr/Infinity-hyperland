@@ -381,6 +381,43 @@ static int hlUnbind(lua_State* L) {
     return 0;
 }
 
+// Infinity-hyperland: hl.rebind("SUPER + L", "SUPER + SHIFT + L") moves every bind on the first keys to the second ones, keeping its action.
+// Used by the settings to change binds that come from the user's own files (their actions are not known to the settings program).
+static int hlRebind(lua_State* L) {
+    auto oldKeys = Check::string(L, 1);
+    auto newKeys = Check::string(L, 2);
+    if (!oldKeys || !newKeys)
+        return Internal::configError(L, "rebind: expected two key strings");
+
+    auto parsed = parseKeyString(*newKeys);
+    if (!parsed)
+        return Internal::configError(L, std::format("hl.rebind: failed to parse the new keys: {}", parsed.error()));
+
+    // build the new binds first (each one calls the old one), then replace
+    std::vector<Keybinds::CBind> created;
+    for (const auto& old : Keybinds::mgr()->registry().findByDisplayKey(*oldKeys)) {
+        Keybinds::SExtraBindArgs args{.devices = old->devices(), .metadata = old->metadata()};
+        args.metadata.displayKey = std::string{*newKeys};
+
+        auto keys = *parsed;
+        auto made = Keybinds::CBind::make(std::move(keys), old->flags(), [old] { return old->invoke(); }, std::move(args));
+        if (made)
+            created.emplace_back(std::move(*made));
+    }
+
+    if (created.empty()) {
+        lua_pushinteger(L, 0);
+        return 1;
+    }
+
+    Keybinds::mgr()->removeBinds(*oldKeys);
+    for (auto& b : created)
+        Keybinds::mgr()->addBind(std::move(b));
+
+    lua_pushinteger(L, sc<lua_Integer>(created.size()));
+    return 1;
+}
+
 static int hlIsKeyDown(lua_State* L) {
     if (lua_isinteger(L, 1)) {
         // Confirm code is valid
@@ -483,6 +520,7 @@ void Internal::registerToplevelBindings(lua_State* L, CConfigManager* mgr) {
     Internal::setFn(L, "exec_scheduled_prop_refresh_immediately", hlExecuteScheduledRefreshImmediately);
 
     Internal::setFn(L, "unbind", hlUnbind);
+    Internal::setFn(L, "rebind", hlRebind);
 
     Internal::setFn(L, "is_key_down", hlIsKeyDown);
 }

@@ -4,3 +4,4 @@ cairo aquamarine glib2 hyprwire glslang hyprcursor hyprgraphics hyprlang hypruti
 libglvnd libinput libx11 libxcb libxcomposite libxcursor libxfixes libxkbcommon libxrender lua mesa muparser
 pango pixman re2 sdbus-cpp tomlplusplus util-linux-libs wayland xcb-proto xcb-util xcb-util-errors
 xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-wm xorg-xwayland
+qt6-base qt6-declarative qt6-wayland

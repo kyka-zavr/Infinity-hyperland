@@ -15,7 +15,15 @@
 #include "SettingsStore.hpp"
 #include "Theme.hpp"
 
+#include "Backend.hpp"
+
 #include <QCoreApplication>
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+#include <QQuickStyle>
+#include <QQuickWindow>
+#include <QTimer>
+#include <QtQml>
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
@@ -81,14 +89,43 @@ static int runCli(const QStringList& args) {
     return 2;
 }
 
-int main(int argc, char** argv) {
-    QCoreApplication app(argc, argv);
+static int runGui(int argc, char** argv, const QString& screenshot, int page) {
+    QGuiApplication app(argc, argv);
+    QGuiApplication::setDesktopFileName("infinity-settings"); // the window class used by window rules
+    QGuiApplication::setApplicationName("infinity-settings");
+    QQuickStyle::setStyle("Basic");
 
-    const auto ARGS = app.arguments().mid(1);
-    if (ARGS.isEmpty()) {
-        out() << "the settings window is not built yet; use --help\n";
-        return 2;
+    Backend backend;
+    qmlRegisterSingletonInstance("Infinity", 1, 0, "Backend", &backend);
+
+    QQmlApplicationEngine engine;
+    engine.loadFromModule("Infinity", "Main");
+    if (engine.rootObjects().isEmpty())
+        return 1;
+
+    auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().first());
+    if (!screenshot.isEmpty() && window) {
+        window->setProperty("page", page);
+        QTimer::singleShot(1200, [window, screenshot, &app] {
+            window->grabWindow().save(screenshot);
+            app.quit();
+        });
     }
 
-    return runCli(ARGS);
+    return app.exec();
+}
+
+int main(int argc, char** argv) {
+    QStringList args;
+    for (int i = 1; i < argc; ++i)
+        args << QString::fromLocal8Bit(argv[i]);
+
+    // the window: no arguments, or --screenshot <file> [page] for a headless render (QT_QPA_PLATFORM=offscreen)
+    if (args.isEmpty())
+        return runGui(argc, argv, {}, 0);
+    if (args[0] == "--screenshot" && args.size() >= 2)
+        return runGui(argc, argv, args[1], args.size() >= 3 ? args[2].toInt() : 0);
+
+    QCoreApplication app(argc, argv);
+    return runCli(app.arguments().mid(1));
 }

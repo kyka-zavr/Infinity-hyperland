@@ -123,7 +123,19 @@ fi
 
 # --- установка ----------------------------------------------------------------------------------
 say "Установка в $PREFIX"
-run_priv "$PREFIX" cmake --install "$BUILD" --prefix "$PREFIX" >/dev/null
+# ставим от своего имени в промежуточный каталог и копируем в префикс: sudo не пишет в каталог сборки
+# (иначе там остаётся файл root, о который спотыкается следующий запуск)
+STAGE="$(mktemp -d)"
+DESTDIR="$STAGE" cmake --install "$BUILD" --prefix "$PREFIX" >/dev/null
+run_priv "$PREFIX" mkdir -p "$PREFIX"
+run_priv "$PREFIX" cp -a "$STAGE$PREFIX/." "$PREFIX/"
+rm -rf "$STAGE"
+
+say "Окно настроек (Qt6)"
+SBUILD="$ROOT/build-settings"
+cmake -S "$ROOT/settings" -B "$SBUILD" -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
+cmake --build "$SBUILD" -j"$JOBS"
+run_priv "$PREFIX" install -Dm755 "$SBUILD/infinity-settings" "$PREFIX/bin/infinity-settings"
 
 subst() { sed "s|@PREFIX@|$PREFIX|g" "$1"; }
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
@@ -133,7 +145,7 @@ subst "$ROOT/installer/infinity-hyprland.desktop" > "$tmp/infinity-hyprland.desk
 
 run_priv "$PREFIX" install -Dm755 "$tmp/infinity-hyprland-session" "$PREFIX/bin/infinity-hyprland-session"
 run_priv "$PREFIX" install -Dm755 "$tmp/infinity-hyprland-config"  "$PREFIX/bin/infinity-hyprland-config"
-run_priv "$PREFIX" install -Dm644 "$ROOT/installer/share/infinity-binds.lua"  "$PREFIX/share/infinity-hyprland/infinity-binds.lua"
+run_priv "$PREFIX" install -Dm644 "$ROOT/installer/share/infinity-include.lua" "$PREFIX/share/infinity-hyprland/infinity-include.lua"
 
 say "Пункт «Infinity-hyprland» в экране входа"
 run_priv "$SESSION_DIR" install -Dm644 "$tmp/infinity-hyprland.desktop" "$SESSION_DIR/infinity-hyprland.desktop"
@@ -146,6 +158,7 @@ if [[ -z "$CONFIG_MODE" ]]; then
     if [[ -e "$CONF_DIR/hyprland.lua" ]]; then
         CONFIG_MODE=skip
         echo "В $CONF_DIR уже есть конфиг, он остаётся как есть."
+        INFINITY_HYPRLAND_CONFIG_DIR="$CONF_DIR" "$CFG" migrate
     elif [[ $ASSUME_YES -eq 1 ]]; then
         CONFIG_MODE=fresh
     else

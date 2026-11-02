@@ -10,3 +10,4 @@
 /hyprland/.git-upstream/
 
 *.log
+/build-settings/

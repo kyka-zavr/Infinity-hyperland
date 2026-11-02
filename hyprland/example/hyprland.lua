@@ -305,35 +305,15 @@ hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 ---- INFINITY (infinite canvas, fork) ----
 -----------------------------------------
 
--- Toggle the mode on every monitor. Windows keep their tiled places and return to them when the mode is switched off.
-hl.bind(mainMod .. " + SHIFT + SPACE", hl.dsp.layout("infinity toggle"))
-
--- Window switcher: hold ALT, press TAB to move the selection (SHIFT+TAB goes back), release ALT to focus the window.
--- Arrow keys and the mouse work too, ESC cancels. Works in both modes and across all workspaces.
-hl.bind("ALT + Tab",         hl.dsp.layout("alttab"))
-hl.bind("ALT + SHIFT + Tab", hl.dsp.layout("alttab prev"))
-
--- Move the whole canvas from the keyboard (the mouse way: move the pointer with the pan modifiers held, SUPER + ALT by default)
-hl.bind(mainMod .. " + CTRL + left",  hl.dsp.layout("infinity pan 150 0"),  { repeating = true })
-hl.bind(mainMod .. " + CTRL + right", hl.dsp.layout("infinity pan -150 0"), { repeating = true })
-hl.bind(mainMod .. " + CTRL + up",    hl.dsp.layout("infinity pan 0 150"),  { repeating = true })
-hl.bind(mainMod .. " + CTRL + down",  hl.dsp.layout("infinity pan 0 -150"), { repeating = true })
-
--- Zoom from the keyboard (the mouse way: CTRL + wheel, every notch)
-hl.bind(mainMod .. " + CTRL + equal", hl.dsp.layout("infinity zoom 1.25"), { repeating = true })
-hl.bind(mainMod .. " + CTRL + minus", hl.dsp.layout("infinity zoom 0.8"),  { repeating = true })
-
--- Keyboard layouts (optional). List the layouts in input.kb_layout, then switch them with SUPER+SPACE.
--- hl.config({ input = { kb_layout = "us,ru" } })
--- hl.bind(mainMod .. " + SPACE", hl.dsp.layout("kblayout next"))
--- hl.config({ infinity = {
---     kb_layout_mode    = "per_window",  -- "system" (one layout for everything) or "per_window" (every window keeps its own)
---     kb_default_layout = 0,             -- per_window: layout index a new window starts with (0 = first, -1 = keep the current one)
---     caps_mode         = "normal",      -- "normal", "per_window" (on in new windows, remembered per window) or "always" (always on)
--- } })
-
--- Infinity options (these are the defaults):
--- hl.config({ infinity = { pan_mods = "SUPER ALT", zoom_mods = "CTRL", zoom_step = 1.1 } })
+-- The binds of the fork (Infinity mode, window switcher, keyboard layout switch, settings on SUPER+I), the keyboard
+-- layouts and the color scheme are generated from the settings into infinity.lua next to this file. Change them in the
+-- settings window (SUPER+I); no need to edit anything here.
+local infinityDir = (os.getenv("HYPRLAND_CONFIG") or ""):match("^(.*)/[^/]*$")
+local infinityFile = infinityDir and io.open(infinityDir .. "/infinity.lua")
+if infinityFile then
+    infinityFile:close()
+    dofile(infinityDir .. "/infinity.lua")
+end
 
 -- Laptop multimedia keys for volume and LCD brightness
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
