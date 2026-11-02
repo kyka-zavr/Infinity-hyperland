@@ -92,6 +92,41 @@ hyprctl dispatch 'hl.dsp.layout("infinity pan 200 0")'
 
 Hyprland 0.57 reads only Lua configs (`hyprland.lua`); the old `hyprland.conf` format is gone upstream.
 
+## Settings window
+
+`SUPER+I` opens **Infinity Settings** (a Qt6 application; also `infinity-settings` from a terminal or a launcher). Changes apply as you make them. Pages:
+
+- **Infinity**: toggle the mode, zoom step, the keys for wheel zoom and mouse panning.
+- **Keyboard**: add layouts (all xkb languages and variants), order them, choose shared or per-window layout, the layout of a new window and the Caps Lock mode.
+- **Appearance**: the color scheme and every color in it, plus (optionally) gaps, border size, rounding, blur and shadows.
+- **Keybinds**: see below.
+- **System**: volume (`wpctl`), brightness (`brightnessctl`), Wi-Fi (`nmcli`); a control is greyed out when its tool is missing.
+
+Everything is stored in `~/.config/infinity-hyprland/settings.json`. `infinity-settings --apply` turns it into `infinity.lua` (included from your `hyprland.lua`) and reloads the compositor; `--print`, `--get <path>` and `--set <path> <json>` are there for scripts. You can edit `settings.json` by hand.
+
+### Color scheme
+
+One palette colors everything we draw: the window switcher, the settings window and, when "Manage these settings" is on, window borders and shadows. A theme is a file `themes/<name>.json` with named colors (`panel`, `bg`, `surface`, `surface_hi`, `well`, `text`, `subtext`, `accent`, `accent_text`, `border_active`, `border_inactive`, `shadow`, `danger`, `success`). Two themes are built in (`dark`, `light`); editing a color makes your own copy named `custom`, and you can add your own files.
+
+**Export to other programs.** Put a template into `~/.config/infinity-hyprland/templates/`: a file `*.tmpl` whose first line is `@target: <path>` and whose body uses placeholders:
+
+```
+@target: ~/.config/kitty/infinity-colors.conf
+foreground {{text}}
+background {{bg}}
+color4     {{accent}}
+```
+
+`{{name}}` gives `#rrggbb`; `{{name.nohash}}`, `{{name.rgb}}` (`92,143,255`), `{{name.rgba}}` and `{{name.hex8}}` (`#rrggbbaa`) are also available. Templates are rendered on every apply; the optional "command after applying" (for example to reload a bar) runs after them.
+
+### Keybinds
+
+Three kinds, all editable in the window:
+
+1. **Binds of the fork** (toggle Infinity, window switcher, next layout, settings, pan, zoom): rebind (click the field and press the keys; global binds do not fire while capturing), disable, or reset.
+2. **Your own binds**: any keys that run a program or a Lua action.
+3. **Binds from your config**: the window lists every bind the running compositor knows, including the ones from your own Lua files, and lets you **disable** one or **move it to other keys**. Your files are never rewritten: the choice is saved as data in `settings.json` and applied last (`hl.unbind` / `hl.rebind`). The list shows the kind of action (`exec_cmd`, `close`, ...), not the command: the compositor does not keep the text of a command.
+
 ## Keyboard layouts
 
 List the layouts in the usual `input.kb_layout` option and switch them with a bind (`SUPER+SPACE` in the example config). Three options decide how the switching behaves:

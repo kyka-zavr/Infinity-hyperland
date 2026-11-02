@@ -28,6 +28,7 @@ Checked against the `LICENSE` files of the installed versions and of the subproj
 | udis86 | BSD 2-Clause (Vivek Thampi) | subproject, built in |
 | glaze (v7.2.0) | MIT (Stephen Berry) | fetched at build time when not installed |
 | tracy | BSD 3-Clause | not used (profiling only) |
+| Qt 6 (base, declarative, wayland) | LGPL-3.0 | system libraries used by the settings window, dynamic linking |
 
 Notes:
 

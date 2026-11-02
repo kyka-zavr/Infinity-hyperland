@@ -9,6 +9,7 @@
 - Installer for Arch Linux: private prefix, login entry, isolated config (copy of the Hyprland config or fresh), uninstall.
 - Upstream updates: the sync script, a daily check on GitHub, and the port from Hyprland 0.56.2 to 0.57.0.
 - Bilingual documentation (English and Russian).
+- Keyboard layouts (per window, default layout, Caps Lock modes), the settings window with one color palette and a bind editor, a text installer ([design-settings.md](design-settings.md)).
 
 ## Known issues
 
@@ -20,8 +21,7 @@
 
 ## Planned
 
-- Settings window (`SUPER+I`, Qt6/QML), one color palette for everything, bind editor, TUI installer with keyboard layouts: see [design-settings.md](design-settings.md).
-- Rework of multi-monitor window handling (needs a bug list from real use).
+- **Release 3 (big)**: rework of the canvas for several monitors (one workspace for all monitors, windows vanishing at pan and zoom limits, parallax on monitors of different sizes, a window opened on a second monitor while the first is in Infinity, and the smaller bugs); see [design-canvas.md](design-canvas.md).
 - A PKGBUILD to install as a package.
 - More testing on real hardware: HiDPI, several GPUs, TTY edge cases.
 - Config-copy check for key collisions (warn and suggest free keys when your config already uses the Infinity keys).

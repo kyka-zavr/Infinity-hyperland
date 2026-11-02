@@ -31,6 +31,14 @@ New module `switcher/`:
 - `AppInfo.{hpp,cpp}`: window class to application name and icon. Parses `.desktop` files (`Name`, localized `Name[...]`, `Icon`, `StartupWMClass`, `Exec`; hidden and `NoDisplay` entries do not match by `Exec`) and finds icons in the GTK theme, `hicolor`, Papirus, breeze, Adwaita and pixmaps; PNG and SVG are loaded with `Hyprgraphics::CImage`.
 - Hooks into Hyprland: keys (`keybinds/Manager.cpp::onKeyEvent`: confirms on modifier release, takes Esc, Enter and arrows while open), mouse buttons (`managers/input/InputManager.cpp::processMouseDownNormal`), pointer motion (`mouseMoveUnified`), drawing (`render/Renderer.cpp`), and the `alttab` layout message (`config/shared/actions/ConfigActions.cpp`).
 
+## Keyboard policy
+
+`keyboard/KeyboardPolicy.*` sits on top of `IKeyboard::updateModifiers`, the one place every layout switch and lock change goes through. It remembers the layout and Caps Lock state per window (`infinity:kb_layout_mode`, `kb_default_layout`, `caps_mode`), applies them on focus changes (`window.active` event), and in "always" mode puts Caps Lock back whenever it is switched off. Hooks: the `modifiers` and `keymap` keyboard events in `managers/input/InputManager.cpp`, the `kblayout` layout message in `config/shared/actions/ConfigActions.cpp`.
+
+## Settings, palette and binds
+
+`settings/` is a separate Qt6 program, `infinity-settings` (see [design-settings.md](design-settings.md)): `SettingsStore` (settings.json), `Theme` (palettes), `LuaGenerator` (settings + theme to `infinity.lua`), `Templates` (palette export), `Applier` (`--apply`), `Backend` (the bridge for QML) and the QML pages. The compositor knows nothing about it except the `infinity:*` options the generated Lua sets (`color_*`, keyboard, zoom) and one extension: `hl.rebind(old, new)` (`config/lua/bindings/LuaBindingsToplevel.cpp`) moves a bind to other keys and keeps its action, which is how binds from the user's own files are edited without rewriting them.
+
 ## Installer and session
 
 `install.sh` and `installer/` (details: [installation.md](installation.md)):
@@ -48,8 +56,9 @@ New module `switcher/`:
 | Keys, wheel, mouse | `keybinds/Manager.cpp`, `managers/input/InputManager.*`, `config/shared/actions/ConfigActions.cpp` |
 | Rendering | `output/Monitor.cpp`, `render/Renderer.cpp`, `render/ElementRenderer.cpp`, `render/pass/RendererHintsPassElement.*` |
 | Options, version string | `config/values/ConfigValues.cpp`, `helpers/SystemInfo.cpp`, `CMakeLists.txt` |
+| Binds from Lua | `config/lua/bindings/LuaBindingsToplevel.cpp` (`hl.rebind`) |
 
-New files: `layout/algorithm/floating/infinity/*`, `switcher/*`.
+New files: `layout/algorithm/floating/infinity/*`, `switcher/*`, `keyboard/*`; outside the compositor: `settings/`.
 
 ## Working with the code
 

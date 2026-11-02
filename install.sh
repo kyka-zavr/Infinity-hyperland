@@ -12,6 +12,12 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# без параметров в обычном терминале (в том числе в TTY) открывается текстовый интерфейс, он умеет мышь там, где её даёт терминал
+if [[ $# -eq 0 && -t 0 && -t 1 && "${TERM:-dumb}" != "dumb" && -f "$ROOT/installer/tui.py" ]] \
+    && command -v python3 >/dev/null && python3 -c 'import curses' 2>/dev/null; then
+    exec python3 "$ROOT/installer/tui.py"
+fi
 PREFIX="/opt/infinity-hyprland"
 SESSION_DIR="/usr/share/wayland-sessions"
 CONFIG_MODE=""      # copy | fresh | skip, пусто = спросить
@@ -20,6 +26,7 @@ DO_DEPS=1
 DO_BUILD=1
 UNINSTALL=0
 JOBS=""
+THEME=""; KB_MODE=""; KB_DEFAULT=""; CAPS=""; LAYOUTS=""   # выбор из текстового интерфейса (или командной строки)
 
 # зависимости сборки и работы (общий список с CI)
 mapfile -t DEPS < <(grep -v '^#' "$ROOT/installer/arch-deps.txt" | tr -s ' \n' '\n\n' | grep .)
@@ -37,6 +44,12 @@ while (($#)); do
         --config) CONFIG_MODE="${2:?}"; shift ;;
         --jobs) JOBS="${2:?}"; shift ;;
         --yes|-y) ASSUME_YES=1 ;;
+        --plain) ;;                                   # без текстового интерфейса (его запускает сам интерфейс)
+        --theme) THEME="${2:?}"; shift ;;             # dark | light
+        --kb-mode) KB_MODE="${2:?}"; shift ;;         # system | per_window
+        --kb-default) KB_DEFAULT="${2:?}"; shift ;;   # номер раскладки нового окна, -1: текущая
+        --caps) CAPS="${2:?}"; shift ;;               # normal | per_window | always
+        --layouts) LAYOUTS="${2:?}"; shift ;;         # us,ru,de:nodeadkeys
         --no-deps) DO_DEPS=0 ;;
         --no-build) DO_BUILD=0 ;;
         --uninstall) UNINSTALL=1 ;;
@@ -178,6 +191,30 @@ case "$CONFIG_MODE" in
     fresh) INFINITY_HYPRLAND_CONFIG_DIR="$CONF_DIR" "$CFG" fresh ;;
     skip)  ;;
 esac
+
+# --- выбор из интерфейса: тема и раскладки пишутся в настройки --------------------------------
+if [[ -n "$THEME$KB_MODE$KB_DEFAULT$CAPS$LAYOUTS" ]]; then
+    say "Тема и раскладки"
+    S_BIN="$PREFIX/bin/infinity-settings"
+    export INFINITY_HYPRLAND_CONFIG_DIR="$CONF_DIR"
+    "$S_BIN" --init >/dev/null
+    [[ -n "$THEME" ]]      && "$S_BIN" --set theme "\"$THEME\""
+    [[ -n "$KB_MODE" ]]    && "$S_BIN" --set keyboard.mode "\"$KB_MODE\""
+    [[ -n "$KB_DEFAULT" ]] && "$S_BIN" --set keyboard.default_layout "$KB_DEFAULT"
+    [[ -n "$CAPS" ]]       && "$S_BIN" --set keyboard.caps_mode "\"$CAPS\""
+    if [[ -n "$LAYOUTS" ]]; then
+        json="["
+        IFS=, read -ra L <<< "$LAYOUTS"
+        for e in "${L[@]}"; do
+            variant=""
+            if [[ "$e" == *:* ]]; then variant="${e#*:}"; fi
+            json+="{\"layout\":\"${e%%:*}\",\"variant\":\"$variant\"},"
+        done
+        "$S_BIN" --set keyboard.layouts "${json%,}]"
+    fi
+    "$S_BIN" --apply --no-reload >/dev/null
+    unset INFINITY_HYPRLAND_CONFIG_DIR
+fi
 
 say "Готово"
 cat <<MSG

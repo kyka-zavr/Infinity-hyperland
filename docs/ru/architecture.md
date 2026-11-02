@@ -31,6 +31,14 @@
 - `AppInfo.{hpp,cpp}`: класс окна в название приложения и иконку. Разбирает `.desktop`-файлы (`Name`, локализованные `Name[...]`, `Icon`, `StartupWMClass`, `Exec`; скрытые записи и `NoDisplay` не подходят по `Exec`) и ищет иконки в теме GTK, `hicolor`, Papirus, breeze, Adwaita и pixmaps; PNG и SVG загружаются через `Hyprgraphics::CImage`.
 - Точки входа в Hyprland: клавиши (`keybinds/Manager.cpp::onKeyEvent`: подтверждает при отпускании модификатора, забирает Esc, Enter и стрелки, пока открыт), кнопки мыши (`managers/input/InputManager.cpp::processMouseDownNormal`), движение указателя (`mouseMoveUnified`), отрисовка (`render/Renderer.cpp`) и сообщение раскладки `alttab` (`config/shared/actions/ConfigActions.cpp`).
 
+## Политика клавиатуры
+
+`keyboard/KeyboardPolicy.*` стоит над `IKeyboard::updateModifiers`, единственным местом, через которое проходят все смены раскладки и замков. Он помнит раскладку и состояние Caps Lock для каждого окна (`infinity:kb_layout_mode`, `kb_default_layout`, `caps_mode`), применяет их при смене фокуса (событие `window.active`), а в режиме «always» возвращает Caps Lock, когда его выключили. Точки входа: события клавиатуры `modifiers` и `keymap` в `managers/input/InputManager.cpp`, сообщение раскладки `kblayout` в `config/shared/actions/ConfigActions.cpp`.
+
+## Настройки, палитра и бинды
+
+`settings/` — отдельная программа на Qt6 `infinity-settings` (см. [design-settings.md](design-settings.md)): `SettingsStore` (settings.json), `Theme` (палитры), `LuaGenerator` (настройки и тема в `infinity.lua`), `Templates` (экспорт палитры), `Applier` (`--apply`), `Backend` (мост для QML) и страницы QML. Композитор о ней ничего не знает, кроме опций `infinity:*`, которые задаёт сгенерированный Lua (`color_*`, клавиатура, зум), и одного расширения: `hl.rebind(старые, новые)` (`config/lua/bindings/LuaBindingsToplevel.cpp`) переносит бинд на другие клавиши с сохранением действия, так бинды из ваших собственных файлов редактируются без переписывания этих файлов.
+
 ## Установщик и сессия
 
 `install.sh` и `installer/` (подробности: [installation.md](installation.md)):
@@ -48,8 +56,9 @@
 | Клавиши, колесо, мышь | `keybinds/Manager.cpp`, `managers/input/InputManager.*`, `config/shared/actions/ConfigActions.cpp` |
 | Рендер | `output/Monitor.cpp`, `render/Renderer.cpp`, `render/ElementRenderer.cpp`, `render/pass/RendererHintsPassElement.*` |
 | Опции, строка версии | `config/values/ConfigValues.cpp`, `helpers/SystemInfo.cpp`, `CMakeLists.txt` |
+| Бинды из Lua | `config/lua/bindings/LuaBindingsToplevel.cpp` (`hl.rebind`) |
 
-Новые файлы: `layout/algorithm/floating/infinity/*`, `switcher/*`.
+Новые файлы: `layout/algorithm/floating/infinity/*`, `switcher/*`, `keyboard/*`; вне композитора: `settings/`.
 
 ## Работа с кодом
 

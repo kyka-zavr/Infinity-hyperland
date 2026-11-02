@@ -8,6 +8,11 @@ Version scheme: `v<Hyprland version>-infinity.<n>`. Every release notes page als
 
 ### Added
 
+- **Settings window** (`SUPER+I`, Qt6/QML): Infinity, keyboard, appearance, keybinds and system pages; changes apply live. Everything is stored in `settings.json` and turned into `infinity.lua`.
+- **One color palette** for everything we draw (window switcher, settings window, optional window borders and shadows), editable color by color; built-in `dark` and `light` themes, your own theme files, and **templates** that export the palette to other programs.
+- **Bind editor**: rebind or disable the binds of the fork, add your own, and disable or move binds from your own Lua files (new Lua function `hl.rebind`).
+- **Text installer** (`./install.sh` without arguments): config choice, **keyboard layouts**, layout and Caps Lock behaviour, color scheme; keyboard first, mouse where the terminal reports it (terminal emulators, the console with `gpm`).
+- Installer: builds and installs the settings window, migrates the old Infinity bind block of a previous version to the settings, installs as the user so the build folder never gets root-owned files, build threads are chosen from total memory (up to 6).
 - **Keyboard layouts**: `infinity:kb_layout_mode` (one layout for the session or one per window), `infinity:kb_default_layout` (layout a new window starts with), `infinity:caps_mode` (normal, per window, always on) and the `kblayout next|prev|<n>` message for a layout bind.
 
 ## v0.57.0-infinity.1 (2026-11-02)

@@ -14,7 +14,8 @@ A Wayland compositor with a native **infinite canvas**: windows live on one unbo
 - **Infinity mode.** Free windows on an unbounded plane. Switching modes loses nothing: when you leave Infinity, windows return to their tiled places.
 - **Pan and zoom** (0.1x to 4x), shared by all monitors. The plane is continuous: a window can be dragged from screen to screen.
 - **Alt-Tab window switcher** with live previews, application icons and names. It lists windows of all workspaces on every monitor, works in both modes, and centers the chosen window on the canvas.
-- **Installer** for Arch Linux and derivatives: installs next to an existing Hyprland without touching it, adds a login-screen entry, and keeps its own config directory.
+- **Settings window** (`SUPER+I`): Infinity, keyboard layouts (shared or per window, Caps Lock modes), one color palette for everything, and a bind editor that also handles the binds from your own config.
+- **Installer** for Arch Linux and derivatives, with a text interface (mouse where the terminal supports it): installs next to an existing Hyprland without touching it, adds a login-screen entry, and keeps its own config directory.
 
 ## Controls
 
@@ -27,6 +28,8 @@ Binds from `hyprland/example/hyprland.lua` (main modifier `SUPER`):
 | Pan the whole canvas | move the mouse with `SUPER+ALT` held (or `SUPER+CTRL+arrows`) |
 | Zoom | `CTRL+wheel` (or `SUPER+CTRL+=` and `SUPER+CTRL+-`) |
 | Window switcher | `ALT+TAB`, back with `ALT+SHIFT+TAB`; arrows, mouse, `ENTER`, `ESC` |
+| Settings | `SUPER+I` |
+| Next keyboard layout | `SUPER+SPACE` |
 
 Details: [docs/en/usage.md](docs/en/usage.md).
 

@@ -28,6 +28,12 @@ What it does, in order:
 
 An already installed Hyprland is not touched: nothing is written to `/usr/bin`, `/usr/local/bin` or `~/.config/hypr`.
 
+The installer also builds the settings window (Qt6: `qt6-base`, `qt6-declarative`, `qt6-wayland`, installed with the other packages). If your config still has the old block of Infinity binds from a previous version, the installer moves it to the settings (your changed keys are kept, a backup is made): `infinity-hyprland-config migrate`.
+
+### Text interface
+
+Run `./install.sh` without arguments in a terminal and a text interface opens (Python `curses`, nothing to install): config choice, install folder, build threads, **keyboard languages** (search, add several, variants), **typing** (shared or per-window layout, layout of a new window, Caps Lock mode) and the color scheme. It is keyboard first (arrows, Tab, Space, Enter, Esc) and the **mouse works wherever the terminal reports it**: terminal emulators and the Linux console with the `gpm` daemon running. After the last page the window closes and the build runs in the same terminal (so `sudo` can ask for a password). Without a terminal, or with any argument, the plain installer runs as before.
+
 ### Options
 
 | Option | Meaning |
@@ -39,6 +45,10 @@ An already installed Hyprland is not touched: nothing is written to `/usr/bin`, 
 | `--yes` | do not ask questions (defaults to a fresh config if none exists) |
 | `--no-deps`, `--no-build` | skip installing packages / skip building |
 | `--uninstall` | remove the compositor and the login entry (configs are kept) |
+| `--plain` | never open the text interface |
+| `--layouts us,ru,de:nodeadkeys` | keyboard layouts (`code` or `code:variant`) |
+| `--kb-mode system\|per_window`, `--kb-default N`, `--caps normal\|per_window\|always` | layout mode, layout of a new window (-1 = keep), Caps Lock mode |
+| `--theme dark\|light` | color scheme |
 
 ## Config modes
 

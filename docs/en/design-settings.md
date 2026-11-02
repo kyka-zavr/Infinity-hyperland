@@ -2,7 +2,7 @@
 
 [English](design-settings.md) | [Русский](../ru/design-settings.md)
 
-Status: design (2026-11-02), implementation in progress. Goals: everything is customizable from one place, colors come from one palette, there is a normal settings window, and binds (ours and the system's) can be edited.
+Status: implemented (2026-11-02); the settings program is one binary, `infinity-settings`, which is both the window and the `--apply` command line tool (it is a Qt program, not a separate Qt Core tool). Goals: everything is customizable from one place, colors come from one palette, there is a normal settings window, and binds (ours and the system's) can be edited.
 
 ## One source of truth
 

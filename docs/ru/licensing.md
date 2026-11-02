@@ -28,6 +28,7 @@ Infinity-hyperland — форк Hyprland, распространяется по�
 | udis86 | BSD 2-Clause (Vivek Thampi) | подпроект, собирается внутрь |
 | glaze (v7.2.0) | MIT (Stephen Berry) | подтягивается при сборке, если не установлен |
 | tracy | BSD 3-Clause | не используется (только профилирование) |
+| Qt 6 (base, declarative, wayland) | LGPL-3.0 | системные библиотеки окна настроек, динамическая линковка |
 
 Заметки:
 
