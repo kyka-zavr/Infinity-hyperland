@@ -186,6 +186,13 @@ if [[ -z "$CONFIG_MODE" ]]; then
     fi
 fi
 
+# конфиг уже есть (повторная установка или обновление): его не трогаем, только переводим старый блок на настройки
+if [[ "$CONFIG_MODE" == copy || "$CONFIG_MODE" == fresh ]] && [[ -e "$CONF_DIR/hyprland.lua" ]]; then
+    echo "В $CONF_DIR уже есть конфиг, он остаётся как есть."
+    INFINITY_HYPRLAND_CONFIG_DIR="$CONF_DIR" "$CFG" migrate
+    CONFIG_MODE=skip
+fi
+
 case "$CONFIG_MODE" in
     copy)  INFINITY_HYPRLAND_CONFIG_DIR="$CONF_DIR" "$CFG" copy-hyprland ;;
     fresh) INFINITY_HYPRLAND_CONFIG_DIR="$CONF_DIR" "$CFG" fresh ;;

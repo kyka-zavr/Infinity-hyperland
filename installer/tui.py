@@ -52,7 +52,8 @@ class State:
         self.prefix = "/opt/infinity-hyprland"
         self.install_deps = True
         self.jobs = "auto"
-        self.config = "copy" if os.path.isfile(os.path.expanduser("~/.config/hypr/hyprland.lua")) else "fresh"
+        self.has_own = os.path.isfile(os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "infinity-hyprland", "hyprland.lua"))
+        self.config = "skip" if self.has_own else ("copy" if os.path.isfile(os.path.expanduser("~/.config/hypr/hyprland.lua")) else "fresh")
         self.layouts = []            # [(code, variant, name)]
         self.kb_mode = "system"
         self.kb_default = -1
@@ -379,7 +380,8 @@ class Options(Page):
     def build(self):
         s = self.s
         has_hypr = os.path.isfile(os.path.expanduser("~/.config/hypr/hyprland.lua"))
-        return [Label("Config to use", ACCENT),
+        note = [Label("You already have an Infinity-hyprland config: it is kept as it is (old binds are moved to the settings).", DIM)] if s.has_own else []
+        return note + [Label("Config to use", ACCENT),
                 Radio("Copy my Hyprland config (original stays untouched)", lambda: s.config, lambda v: setattr(s, "config", v), "copy",
                       "" if has_hypr else "(none found)"),
                 Radio("Start with a clean config", lambda: s.config, lambda v: setattr(s, "config", v), "fresh"),
