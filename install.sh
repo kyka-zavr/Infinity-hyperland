@@ -92,7 +92,7 @@ PREV_VERSION=""
 IS_OURS=0   # наш каталог: есть метка или файлы, которые кладёт только этот установщик (установка старым установщиком метки не имеет)
 if [[ -f "$PREFIX/.infinity-hyprland" || -x "$PREFIX/bin/infinity-hyprland-session" ]]; then
     IS_OURS=1
-    PREV_VERSION="$(sed -n 's/^version=//p' "$PREFIX/.infinity-hyprland" 2>/dev/null | head -1)"
+    PREV_VERSION="$(sed -n 's/^version=//p' "$PREFIX/.infinity-hyprland" 2>/dev/null | head -1 || true)"
     [[ -n "$PREV_VERSION" ]] || PREV_VERSION="(более старая установка, версия неизвестна)"
 fi
 if [[ -n "$PREV_VERSION" ]]; then
