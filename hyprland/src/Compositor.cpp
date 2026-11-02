@@ -63,6 +63,7 @@
 #include "plugins/PluginSystem.hpp"
 #include "errorOverlay/Overlay.hpp"
 #include "notification/NotificationOverlay.hpp"
+#include "keyboard/KeyboardPolicy.hpp"
 #include "debug/Overlay.hpp"
 #include "i18n/Engine.hpp"
 #include "layout/LayoutManager.hpp"
@@ -745,6 +746,7 @@ void CCompositor::initManagers(eManagersInitStage stage) {
 
             LOG(Log::DEBUG, "Creating the NotificationOverlay!");
             Notification::overlay();
+            KeyboardPolicy::policy();
 
             LOG(Log::DEBUG, "Creating the PluginSystem!");
             g_pPluginSystem = makeUnique<CPluginSystem>();

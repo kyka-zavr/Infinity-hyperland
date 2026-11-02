@@ -1,5 +1,6 @@
 #include "ConfigActions.hpp"
 #include "../../../switcher/WindowSwitcher.hpp"
+#include "../../../keyboard/KeyboardPolicy.hpp"
 #include "../parserUtils/ParserUtils.hpp"
 #include "../../ConfigManager.hpp"
 #include "../../../desktop/state/FocusState.hpp"
@@ -1227,6 +1228,13 @@ ActionResult Actions::swapActiveWorkspaces(PHLMONITOR mon1, PHLMONITOR mon2) {
 }
 
 ActionResult Actions::layoutMessage(const std::string& msg) {
+    // keyboard layout switch (SUPER+SPACE in the example config): next, prev or an index
+    if (msg.starts_with("kblayout ")) {
+        if (const auto ERR = KeyboardPolicy::policy()->switchLayout(msg.substr(sizeof("kblayout ") - 1)); !ERR.empty())
+            return actionError(ERR, eActionErrorLevel::WARNING, eActionErrorCode::INVALID_ARGUMENT);
+        return {};
+    }
+
     // Alt-Tab: opens the window switcher, or moves its selection when it is open (src/switcher)
     if (msg == "alttab" || msg == "alttab prev") {
         if (const auto ERR = Switcher::switcher()->trigger(msg == "alttab prev"); !ERR.empty())

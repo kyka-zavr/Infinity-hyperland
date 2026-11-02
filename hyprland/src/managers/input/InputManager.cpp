@@ -1,5 +1,6 @@
 #include "InputManager.hpp"
 #include "../../switcher/WindowSwitcher.hpp"
+#include "../../keyboard/KeyboardPolicy.hpp"
 #include "../../layout/algorithm/Algorithm.hpp"
 #include "../../layout/space/Space.hpp"
 #include "../../desktop/view/window/WindowPresentation.hpp"
@@ -1198,6 +1199,7 @@ void CInputManager::setupKeyboard(SP<IKeyboard> keeb) {
         auto PKEEB = keeb->m_self.lock();
 
         onKeyboardMod(PKEEB);
+        KeyboardPolicy::policy()->onModifiers(PKEEB);
 
         if (PKEEB->m_enabled)
             PROTO::idle->onActivity();
@@ -1209,6 +1211,8 @@ void CInputManager::setupKeyboard(SP<IKeyboard> keeb) {
     keeb->m_keyboardEvents.keymap.listenStatic([keeb = keeb.get()] {
         auto       PKEEB  = keeb->m_self.lock();
         const auto LAYOUT = PKEEB->getActiveLayout();
+
+        KeyboardPolicy::policy()->onKeymap(PKEEB);
 
         if (PKEEB == g_pSeatManager->m_keyboard) {
             g_pSeatManager->updateActiveKeyboardData();

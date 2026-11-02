@@ -78,6 +78,7 @@ hl.config({ infinity = {
 | `infinity zoom <k> cursor` | то же вокруг указателя |
 | `infinity probe` | отладка: какое окно под указателем |
 | `alttab` / `alttab prev` | открыть переключатель окон / сдвинуть выбор |
+| `kblayout next` / `prev` / `<n>` | переключить раскладку клавиатуры (см. «Раскладки клавиатуры») |
 
 ```lua
 hl.bind("SUPER + SHIFT + SPACE", hl.dsp.layout("infinity toggle"))
@@ -90,6 +91,26 @@ hyprctl dispatch 'hl.dsp.layout("infinity pan 200 0")'
 ```
 
 Hyprland 0.57 читает только конфиги на Lua (`hyprland.lua`); старый формат `hyprland.conf` оригинал убрал.
+
+## Раскладки клавиатуры
+
+Раскладки перечисляются в обычной опции `input.kb_layout`, а переключаются биндом (`SUPER+SPACE` в примере конфига). Поведение задают три опции:
+
+```lua
+hl.config({ input = { kb_layout = "us,ru" } })
+hl.bind("SUPER + SPACE", hl.dsp.layout("kblayout next"))   -- или "kblayout prev", "kblayout 1" (по номеру)
+
+hl.config({ infinity = {
+    kb_layout_mode    = "per_window",  -- "system": одна раскладка на всю сессию (как в обычном Hyprland)
+                                       -- "per_window": у каждого окна своя раскладка, как в Windows
+    kb_default_layout = 0,             -- per_window: раскладка, с которой стартует НОВОЕ окно (0 = первая); -1 оставляет текущую
+    caps_mode         = "normal",      -- "normal": без изменений
+                                       -- "per_window": Caps Lock ВКЛЮЧЁН в новых окнах, переключается, запоминается для каждого окна
+                                       -- "always": Caps Lock всегда включён везде
+} })
+```
+
+Раскладка и Caps Lock независимы: `kb_layout_mode` и `kb_default_layout` не трогают Caps Lock, а `caps_mode` не трогает раскладку. В режиме per_window раскладка запоминается и при смене обычными клавишами XKB (например `grp:alt_shift_toggle`), а не только через `kblayout`.
 
 ## Известные ограничения
 

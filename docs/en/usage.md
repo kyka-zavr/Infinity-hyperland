@@ -78,6 +78,7 @@ Everything is a layout message, usable from binds and from `hyprctl`:
 | `infinity zoom <k> cursor` | the same around the pointer |
 | `infinity probe` | debug: which window is under the pointer |
 | `alttab` / `alttab prev` | open the window switcher / move the selection |
+| `kblayout next` / `prev` / `<n>` | switch the keyboard layout (see "Keyboard layouts") |
 
 ```lua
 hl.bind("SUPER + SHIFT + SPACE", hl.dsp.layout("infinity toggle"))
@@ -90,6 +91,26 @@ hyprctl dispatch 'hl.dsp.layout("infinity pan 200 0")'
 ```
 
 Hyprland 0.57 reads only Lua configs (`hyprland.lua`); the old `hyprland.conf` format is gone upstream.
+
+## Keyboard layouts
+
+List the layouts in the usual `input.kb_layout` option and switch them with a bind (`SUPER+SPACE` in the example config). Three options decide how the switching behaves:
+
+```lua
+hl.config({ input = { kb_layout = "us,ru" } })
+hl.bind("SUPER + SPACE", hl.dsp.layout("kblayout next"))   -- or "kblayout prev", "kblayout 1" (by index)
+
+hl.config({ infinity = {
+    kb_layout_mode    = "per_window",  -- "system": one layout for the whole session (usual Hyprland)
+                                       -- "per_window": every window remembers its own layout, like Windows
+    kb_default_layout = 0,             -- per_window: layout a NEW window starts with (0 = the first); -1 keeps the current one
+    caps_mode         = "normal",      -- "normal": unchanged
+                                       -- "per_window": Caps Lock is ON in new windows, can be toggled, remembered per window
+                                       -- "always": Caps Lock is always on, everywhere
+} })
+```
+
+Layout and Caps Lock are independent: `kb_layout_mode` and `kb_default_layout` never touch Caps Lock, `caps_mode` never touches the layout. In per_window mode the layout is also remembered when you change it with the usual XKB keys (for example `grp:alt_shift_toggle`), not only with `kblayout`.
 
 ## Known limitations
 

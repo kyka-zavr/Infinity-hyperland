@@ -323,6 +323,15 @@ hl.bind(mainMod .. " + CTRL + down",  hl.dsp.layout("infinity pan 0 -150"), { re
 hl.bind(mainMod .. " + CTRL + equal", hl.dsp.layout("infinity zoom 1.25"), { repeating = true })
 hl.bind(mainMod .. " + CTRL + minus", hl.dsp.layout("infinity zoom 0.8"),  { repeating = true })
 
+-- Keyboard layouts (optional). List the layouts in input.kb_layout, then switch them with SUPER+SPACE.
+-- hl.config({ input = { kb_layout = "us,ru" } })
+-- hl.bind(mainMod .. " + SPACE", hl.dsp.layout("kblayout next"))
+-- hl.config({ infinity = {
+--     kb_layout_mode    = "per_window",  -- "system" (one layout for everything) or "per_window" (every window keeps its own)
+--     kb_default_layout = 0,             -- per_window: layout index a new window starts with (0 = first, -1 = keep the current one)
+--     caps_mode         = "normal",      -- "normal", "per_window" (on in new windows, remembered per window) or "always" (always on)
+-- } })
+
 -- Infinity options (these are the defaults):
 -- hl.config({ infinity = { pan_mods = "SUPER ALT", zoom_mods = "CTRL", zoom_step = 1.1 } })
 
