@@ -1,115 +1,93 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Infinity-hyprland: logo concepts</title>
 <style>
-  :root { --bg:#0e0e13; --card:#17171e; --text:#eceef6; --sub:#9aa1b6; --accent:#5c8fff; --line:#262633; }
-  @media (prefers-color-scheme: light) { :root { --bg:#f3f4f8; --card:#ffffff; --text:#16161d; --sub:#5a6074; --line:#dcdfe9; } }
+  :root { --bg:#0b0b0c; --card:#141416; --text:#f2f2f2; --sub:#8c8c8c; --line:#26262a; }
+  @media (prefers-color-scheme: light) { :root { --bg:#efefef; --card:#fafafa; --text:#0b0b0c; --sub:#76767a; --line:#d8d8dc; } }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 "Adwaita Mono", ui-monospace, monospace; }
-  header { padding:40px 6vw 8px; }
-  h1 { margin:0 0 6px; font-size:26px; }
-  header p { margin:0; color:var(--sub); max-width:70ch; }
-  main { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr)); gap:20px; padding:24px 6vw 60px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px; }
-  .card h2 { margin:0 0 6px; font-size:18px; }
-  .card h2 span { color:var(--accent); }
+  header { padding:40px 6vw 8px; } h1 { margin:0 0 6px; font-size:26px; } header p { margin:0; color:var(--sub); max-width:72ch; }
+  main { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr)); gap:20px; padding:24px 6vw 60px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:22px; }
+  .card h2 { margin:0 0 6px; font-size:18px; } .card h2 span { color:var(--sub); font-weight:normal; }
   .card p { margin:0 0 16px; color:var(--sub); font-size:13px; }
   .row { display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; }
-  .tile { border-radius:14px; padding:14px; display:grid; place-items:center; }
-  .tile.dark { background:#07070a; }
-  .tile.light { background:#f1f2f6; }
-  .tile.small { padding:8px; border-radius:10px; }
-  .sizes { display:flex; gap:8px; align-items:flex-end; }
-  .wide { margin-top:18px; }
-  .wide img { width:100%; height:auto; display:block; border-radius:14px; }
+  .sizes { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; max-width:190px; }
+  .wide { margin-top:18px; display:grid; gap:10px; } .wide img { width:100%; height:auto; display:block; }
   .files { margin:12px 0 0 !important; }
-  a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
-</style>
-</head>
+</style></head>
 <body>
-<header>
-  <h1>Infinity-hyprland: logo concepts</h1>
-  <p>Five directions, each as a square icon (256&times;256, rounded plate) and a horizontal logo with the name. The text is converted to outlines, so the files need no fonts. Pick one and say what to change.</p>
-</header>
+<header><h1>Infinity-hyprland: logo concepts</h1>
+<p>Black and white, no gradients. Each concept as a square icon and a horizontal logo, in a dark and a light variant. Text is outlined, the files need no fonts. Pick one and say what to change.</p></header>
 <main>
 <section class="card">
   <h2>01 <span>Lemniscate with a window</span></h2>
-  <p>A bold infinity sign with a window at the crossing: the canvas and the windows on it. The most direct reading.</p>
+  <p>A bold infinity sign with a window at the crossing: the canvas and the windows on it.</p>
   <div class="row">
-    <div class="tile dark"><img src="01-lemniscate-icon.svg" width="128" height="128" alt=""></div>
-    <div class="tile light"><img src="01-lemniscate-icon.svg" width="128" height="128" alt=""></div>
+    <img src="01-lemniscate-icon.svg" width="128" height="128" alt="">
+    <img src="01-lemniscate-icon-light.svg" width="128" height="128" alt="">
     <div class="sizes">
-      <div class="tile dark small"><img src="01-lemniscate-icon.svg" width="48" height="48" alt=""></div>
-      <div class="tile dark small"><img src="01-lemniscate-icon.svg" width="32" height="32" alt=""></div>
-      <div class="tile dark small"><img src="01-lemniscate-icon.svg" width="16" height="16" alt=""></div>
+      <img src="01-lemniscate-icon.svg" width="48" height="48" alt=""><img src="01-lemniscate-icon.svg" width="32" height="32" alt=""><img src="01-lemniscate-icon.svg" width="16" height="16" alt="">
+      <img src="01-lemniscate-icon-light.svg" width="48" height="48" alt=""><img src="01-lemniscate-icon-light.svg" width="32" height="32" alt=""><img src="01-lemniscate-icon-light.svg" width="16" height="16" alt="">
     </div>
   </div>
-  <div class="wide"><img src="01-lemniscate-logo.svg" alt="Lemniscate with a window logo"></div>
-  <p class="files"><a href="01-lemniscate-icon.svg">01-lemniscate-icon.svg</a> &middot; <a href="01-lemniscate-logo.svg">01-lemniscate-logo.svg</a></p>
+  <div class="wide"><img src="01-lemniscate-logo.svg" alt=""><img src="01-lemniscate-logo-light.svg" alt=""></div>
+  <p class="files">01-lemniscate-icon[-light].svg &middot; 01-lemniscate-logo[-light].svg</p>
 </section>
 <section class="card">
   <h2>02 <span>Viewport</span></h2>
   <p>A viewfinder around a small infinity sign: the screen is a view over an unbounded plane.</p>
   <div class="row">
-    <div class="tile dark"><img src="02-viewport-icon.svg" width="128" height="128" alt=""></div>
-    <div class="tile light"><img src="02-viewport-icon.svg" width="128" height="128" alt=""></div>
+    <img src="02-viewport-icon.svg" width="128" height="128" alt="">
+    <img src="02-viewport-icon-light.svg" width="128" height="128" alt="">
     <div class="sizes">
-      <div class="tile dark small"><img src="02-viewport-icon.svg" width="48" height="48" alt=""></div>
-      <div class="tile dark small"><img src="02-viewport-icon.svg" width="32" height="32" alt=""></div>
-      <div class="tile dark small"><img src="02-viewport-icon.svg" width="16" height="16" alt=""></div>
+      <img src="02-viewport-icon.svg" width="48" height="48" alt=""><img src="02-viewport-icon.svg" width="32" height="32" alt=""><img src="02-viewport-icon.svg" width="16" height="16" alt="">
+      <img src="02-viewport-icon-light.svg" width="48" height="48" alt=""><img src="02-viewport-icon-light.svg" width="32" height="32" alt=""><img src="02-viewport-icon-light.svg" width="16" height="16" alt="">
     </div>
   </div>
-  <div class="wide"><img src="02-viewport-logo.svg" alt="Viewport logo"></div>
-  <p class="files"><a href="02-viewport-icon.svg">02-viewport-icon.svg</a> &middot; <a href="02-viewport-logo.svg">02-viewport-logo.svg</a></p>
+  <div class="wide"><img src="02-viewport-logo.svg" alt=""><img src="02-viewport-logo-light.svg" alt=""></div>
+  <p class="files">02-viewport-icon[-light].svg &middot; 02-viewport-logo[-light].svg</p>
 </section>
 <section class="card">
   <h2>03 <span>Linked windows</span></h2>
-  <p>Two window frames locked together into an infinity shape: windows that are one connected space.</p>
+  <p>Two overlapping window frames shaped like an infinity sign.</p>
   <div class="row">
-    <div class="tile dark"><img src="03-linked-windows-icon.svg" width="128" height="128" alt=""></div>
-    <div class="tile light"><img src="03-linked-windows-icon.svg" width="128" height="128" alt=""></div>
+    <img src="03-linked-windows-icon.svg" width="128" height="128" alt="">
+    <img src="03-linked-windows-icon-light.svg" width="128" height="128" alt="">
     <div class="sizes">
-      <div class="tile dark small"><img src="03-linked-windows-icon.svg" width="48" height="48" alt=""></div>
-      <div class="tile dark small"><img src="03-linked-windows-icon.svg" width="32" height="32" alt=""></div>
-      <div class="tile dark small"><img src="03-linked-windows-icon.svg" width="16" height="16" alt=""></div>
+      <img src="03-linked-windows-icon.svg" width="48" height="48" alt=""><img src="03-linked-windows-icon.svg" width="32" height="32" alt=""><img src="03-linked-windows-icon.svg" width="16" height="16" alt="">
+      <img src="03-linked-windows-icon-light.svg" width="48" height="48" alt=""><img src="03-linked-windows-icon-light.svg" width="32" height="32" alt=""><img src="03-linked-windows-icon-light.svg" width="16" height="16" alt="">
     </div>
   </div>
-  <div class="wide"><img src="03-linked-windows-logo.svg" alt="Linked windows logo"></div>
-  <p class="files"><a href="03-linked-windows-icon.svg">03-linked-windows-icon.svg</a> &middot; <a href="03-linked-windows-logo.svg">03-linked-windows-logo.svg</a></p>
+  <div class="wide"><img src="03-linked-windows-logo.svg" alt=""><img src="03-linked-windows-logo-light.svg" alt=""></div>
+  <p class="files">03-linked-windows-icon[-light].svg &middot; 03-linked-windows-logo[-light].svg</p>
 </section>
 <section class="card">
   <h2>04 <span>Infinite grid</span></h2>
-  <p>A dot grid that fades out with windows floating on it: the plane itself, no infinity sign needed.</p>
+  <p>A dot grid fading into nothing with windows floating on it: the plane itself.</p>
   <div class="row">
-    <div class="tile dark"><img src="04-infinite-grid-icon.svg" width="128" height="128" alt=""></div>
-    <div class="tile light"><img src="04-infinite-grid-icon.svg" width="128" height="128" alt=""></div>
+    <img src="04-infinite-grid-icon.svg" width="128" height="128" alt="">
+    <img src="04-infinite-grid-icon-light.svg" width="128" height="128" alt="">
     <div class="sizes">
-      <div class="tile dark small"><img src="04-infinite-grid-icon.svg" width="48" height="48" alt=""></div>
-      <div class="tile dark small"><img src="04-infinite-grid-icon.svg" width="32" height="32" alt=""></div>
-      <div class="tile dark small"><img src="04-infinite-grid-icon.svg" width="16" height="16" alt=""></div>
+      <img src="04-infinite-grid-icon.svg" width="48" height="48" alt=""><img src="04-infinite-grid-icon.svg" width="32" height="32" alt=""><img src="04-infinite-grid-icon.svg" width="16" height="16" alt="">
+      <img src="04-infinite-grid-icon-light.svg" width="48" height="48" alt=""><img src="04-infinite-grid-icon-light.svg" width="32" height="32" alt=""><img src="04-infinite-grid-icon-light.svg" width="16" height="16" alt="">
     </div>
   </div>
-  <div class="wide"><img src="04-infinite-grid-logo.svg" alt="Infinite grid logo"></div>
-  <p class="files"><a href="04-infinite-grid-icon.svg">04-infinite-grid-icon.svg</a> &middot; <a href="04-infinite-grid-logo.svg">04-infinite-grid-logo.svg</a></p>
+  <div class="wide"><img src="04-infinite-grid-logo.svg" alt=""><img src="04-infinite-grid-logo-light.svg" alt=""></div>
+  <p class="files">04-infinite-grid-icon[-light].svg &middot; 04-infinite-grid-logo[-light].svg</p>
 </section>
 <section class="card">
   <h2>05 <span>Tiles to infinity</span></h2>
   <p>Tiles that line up into an infinity sign: tiling and the infinite canvas, the two modes of the fork.</p>
   <div class="row">
-    <div class="tile dark"><img src="05-tiles-icon.svg" width="128" height="128" alt=""></div>
-    <div class="tile light"><img src="05-tiles-icon.svg" width="128" height="128" alt=""></div>
+    <img src="05-tiles-icon.svg" width="128" height="128" alt="">
+    <img src="05-tiles-icon-light.svg" width="128" height="128" alt="">
     <div class="sizes">
-      <div class="tile dark small"><img src="05-tiles-icon.svg" width="48" height="48" alt=""></div>
-      <div class="tile dark small"><img src="05-tiles-icon.svg" width="32" height="32" alt=""></div>
-      <div class="tile dark small"><img src="05-tiles-icon.svg" width="16" height="16" alt=""></div>
+      <img src="05-tiles-icon.svg" width="48" height="48" alt=""><img src="05-tiles-icon.svg" width="32" height="32" alt=""><img src="05-tiles-icon.svg" width="16" height="16" alt="">
+      <img src="05-tiles-icon-light.svg" width="48" height="48" alt=""><img src="05-tiles-icon-light.svg" width="32" height="32" alt=""><img src="05-tiles-icon-light.svg" width="16" height="16" alt="">
     </div>
   </div>
-  <div class="wide"><img src="05-tiles-logo.svg" alt="Tiles to infinity logo"></div>
-  <p class="files"><a href="05-tiles-icon.svg">05-tiles-icon.svg</a> &middot; <a href="05-tiles-logo.svg">05-tiles-logo.svg</a></p>
+  <div class="wide"><img src="05-tiles-logo.svg" alt=""><img src="05-tiles-logo-light.svg" alt=""></div>
+  <p class="files">05-tiles-icon[-light].svg &middot; 05-tiles-logo[-light].svg</p>
 </section>
-</main>
-</body>
-</html>
+</main></body></html>

@@ -1,5 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
-<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5c8fff"/><stop offset="1" stop-color="#3fd6c5"/></linearGradient><linearGradient id="g2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3fd6c5"/><stop offset="1" stop-color="#5c8fff"/></linearGradient></defs>
-<rect width="256" height="256" rx="56" fill="#121217"/>
-<g><rect x="22" y="72" width="112" height="112" rx="30" fill="none" stroke="url(#g)" stroke-width="16"/><path d="M42,112 H114" stroke="url(#g)" stroke-width="9" stroke-linecap="round"/></g><g><rect x="122" y="72" width="112" height="112" rx="30" fill="none" stroke="url(#g2)" stroke-width="16"/><path d="M142,112 H214" stroke="url(#g2)" stroke-width="9" stroke-linecap="round"/></g><clipPath id="c"><rect x="122" y="72" width="12" height="112"/></clipPath><g clip-path="url(#c)"><rect x="22" y="72" width="112" height="112" rx="30" fill="none" stroke="url(#g)" stroke-width="16"/><path d="M42,112 H114" stroke="url(#g)" stroke-width="9" stroke-linecap="round"/></g>
+<rect width="256" height="256" rx="70" fill="#0b0b0c"/>
+<rect x="22" y="72" width="112" height="112" rx="40" fill="none" stroke="#f6f6f6" stroke-width="15"/><rect x="122" y="72" width="112" height="112" rx="40" fill="none" stroke="#f6f6f6" stroke-width="15"/>
 </svg>
