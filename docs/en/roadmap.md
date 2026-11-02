@@ -20,6 +20,8 @@
 
 ## Planned
 
+- Settings window (`SUPER+I`, Qt6/QML), one color palette for everything, bind editor, TUI installer with keyboard layouts: see [design-settings.md](design-settings.md).
+- Rework of multi-monitor window handling (needs a bug list from real use).
 - A PKGBUILD to install as a package.
 - More testing on real hardware: HiDPI, several GPUs, TTY edge cases.
 - Config-copy check for key collisions (warn and suggest free keys when your config already uses the Infinity keys).
