@@ -653,6 +653,13 @@ std::vector<SP<IValue>> Values::getConfigValues() {
         MS<String>("infinity:kb_layout_mode", "Keyboard layout switching: \"system\" (one layout for the whole session) or \"per_window\" (every window remembers its own layout).", "system", {.refresh = Supplementary::REFRESH_INPUT_DEVICES}),
         MS<Int>("infinity:kb_default_layout", "In per_window mode: index of the layout (0 is the first) a new window starts with, -1 to inherit the current one.", -1, {.min = -1, .max = 31}),
         MS<String>("infinity:caps_mode", "Caps Lock: \"normal\", \"per_window\" (on in new windows, remembered per window) or \"always\" (always on).", "normal", {.refresh = Supplementary::REFRESH_INPUT_DEVICES}),
+        MS<Color>("infinity:color_panel", "Background of the Infinity panels (window switcher). Alpha is respected.", 0xf0121217),
+        MS<Color>("infinity:color_tile", "Background of a tile in the window switcher.", 0xff1f1f26),
+        MS<Color>("infinity:color_tile_selected", "Background of the selected tile in the window switcher.", 0xff292b38),
+        MS<Color>("infinity:color_well", "Background behind the preview of a window in the window switcher.", 0xff0d0d12),
+        MS<Color>("infinity:color_accent", "Accent color: the frame of the selected tile.", 0xff5c8fff),
+        MS<Color>("infinity:color_text", "Main text color of the Infinity panels.", 0xffffffff),
+        MS<Color>("infinity:color_subtext", "Secondary text color of the Infinity panels (window titles).", 0xffb8bdcc),
         MS<String>("infinity:pan_mods", "Modifiers that, while held, make mouse movement pan the whole plane in Infinity mode, e.g. \"SUPER ALT\". Empty to disable.", "SUPER ALT"),
 
         /*

@@ -44,7 +44,8 @@ namespace Switcher {
             SP<Render::ITexture> tex;
             Vector2D             size;
             std::string          text;
-            int                  pt = 0;
+            int                  pt       = 0;
+            uint32_t             colorHex = 0; // a palette change re-renders the text
         };
 
         struct SEntry {

@@ -240,14 +240,16 @@ bool CWindowSwitcher::onKey(xkb_keysym_t sym, bool pressed) {
 }
 
 void CWindowSwitcher::updateText(SText& t, const std::string& text, int pt, int maxWidthPx, int weight, const CHyprColor& color) {
-    if (t.tex && t.pt == pt && t.text == text)
+    const uint32_t HEX = color.getAsHex();
+    if (t.tex && t.pt == pt && t.text == text && t.colorHex == HEX)
         return;
 
     static auto fontFamily = CConfigValue<std::string>("misc:font_family");
 
-    t.text = text;
-    t.pt   = pt;
-    t.tex  = g_pHyprRenderer->renderText(text, color, pt, false, *fontFamily, maxWidthPx, weight);
+    t.text     = text;
+    t.pt       = pt;
+    t.colorHex = HEX;
+    t.tex      = g_pHyprRenderer->renderText(text, color, pt, false, *fontFamily, maxWidthPx, weight);
     t.size = t.tex ? t.tex->m_size : Vector2D{};
 }
 
@@ -265,6 +267,15 @@ void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
 
     auto& layout = m_layouts[monitor.get()];
     layout       = {};
+
+    // colors come from the one palette (infinity:color_*)
+    static auto  PCPANEL = CConfigValue<Config::INTEGER>("infinity:color_panel");
+    static auto  PCTILE  = CConfigValue<Config::INTEGER>("infinity:color_tile");
+    static auto  PCTILES = CConfigValue<Config::INTEGER>("infinity:color_tile_selected");
+    static auto  PCWELL  = CConfigValue<Config::INTEGER>("infinity:color_well");
+    static auto  PCACCENT = CConfigValue<Config::INTEGER>("infinity:color_accent");
+    static auto  PCTEXT  = CConfigValue<Config::INTEGER>("infinity:color_text");
+    static auto  PCSUB   = CConfigValue<Config::INTEGER>("infinity:color_subtext");
 
     const float  SCALE   = monitor->m_scale;
     const auto   MONSIZE = monitor->m_transformedSize;
@@ -294,7 +305,7 @@ void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
 
     CRectPassElement::SRectData panel;
     panel.box   = {PANELX, PANELY, PANELW, PANELH};
-    panel.color = CHyprColor{0.07F, 0.07F, 0.09F, 0.94F};
+    panel.color = CHyprColor(*PCPANEL);
     panel.round = sc<int>(16.F * SCALE);
     ctx.m_pass.add(makeUnique<CRectPassElement>(panel));
 
@@ -310,14 +321,14 @@ void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
         if (i == m_selected) {
             CRectPassElement::SRectData sel;
             sel.box   = {x - SELPAD * SCALE, y - SELPAD * SCALE, TW + 2 * SELPAD * SCALE, TH + 2 * SELPAD * SCALE};
-            sel.color = CHyprColor{0.36F, 0.56F, 1.F, 1.F};
+            sel.color = CHyprColor(*PCACCENT);
             sel.round = sc<int>(12.F * SCALE);
             ctx.m_pass.add(makeUnique<CRectPassElement>(sel));
         }
 
         CRectPassElement::SRectData tile;
         tile.box   = {x, y, TW, TH};
-        tile.color = i == m_selected ? CHyprColor{0.16F, 0.17F, 0.22F, 1.F} : CHyprColor{0.12F, 0.12F, 0.15F, 1.F};
+        tile.color = CHyprColor(i == m_selected ? *PCTILES : *PCTILE);
         tile.round = sc<int>(10.F * SCALE);
         ctx.m_pass.add(makeUnique<CRectPassElement>(tile));
 
@@ -342,7 +353,7 @@ void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
         }
 
         // application name
-        updateText(e.name[PT_NAME], e.appName, PT_NAME, sc<int>(x + TW - INSET - textX), 600, CHyprColor{1.F, 1.F, 1.F, 1.F});
+        updateText(e.name[PT_NAME], e.appName, PT_NAME, sc<int>(x + TW - INSET - textX), 600, CHyprColor(*PCTEXT));
         auto& name = e.name[PT_NAME];
         if (name.tex) {
             CTexPassElement::SRenderData t;
@@ -357,7 +368,7 @@ void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
 
         CRectPassElement::SRectData well;
         well.box   = AREA;
-        well.color = CHyprColor{0.05F, 0.05F, 0.07F, 1.F};
+        well.color = CHyprColor(*PCWELL);
         well.round = sc<int>(6.F * SCALE);
         ctx.m_pass.add(makeUnique<CRectPassElement>(well));
 
@@ -387,7 +398,7 @@ void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
 
         // window title
         auto& title = e.title[PT_TITLE];
-        updateText(title, W->metadata().title(), PT_TITLE, sc<int>(TW - 2 * INSET), 400, CHyprColor{0.72F, 0.74F, 0.8F, 1.F});
+        updateText(title, W->metadata().title(), PT_TITLE, sc<int>(TW - 2 * INSET), 400, CHyprColor(*PCSUB));
         if (title.tex) {
             CTexPassElement::SRenderData t;
             t.tex = title.tex;
