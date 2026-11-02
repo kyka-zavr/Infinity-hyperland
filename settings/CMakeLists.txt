@@ -18,6 +18,10 @@ qt_add_library(infinity_core STATIC
 target_include_directories(infinity_core PUBLIC src)
 target_link_libraries(infinity_core PUBLIC Qt6::Core)
 
+# the QML module lives inside the executable (resource prefix /qt/qml), so the binary works from any place,
+# for example /opt/infinity-hyprland/bin; without this it only found its module in a folder next to it (the build dir)
+qt_policy(SET QTP0001 NEW)
+
 set_source_files_properties(qml/Style.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
 qt_add_executable(infinity-settings src/main.cpp src/Backend.cpp src/Backend.hpp)

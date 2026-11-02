@@ -245,6 +245,13 @@ if [[ -n "$THEME$KB_MODE$KB_DEFAULT$CAPS$LAYOUTS" ]]; then
     unset INFINITY_HYPRLAND_CONFIG_DIR
 fi
 
+# окно настроек должно запускаться из установленного места (а не только из каталога сборки)
+if QT_QPA_PLATFORM=offscreen INFINITY_HYPRLAND_CONFIG_DIR="$tmp/smoke-config" timeout 60 "$PREFIX/bin/infinity-settings" --screenshot "$tmp/smoke.png" 0 >/dev/null 2>&1 && [[ -s "$tmp/smoke.png" ]]; then
+    echo "Окно настроек запускается."
+else
+    warn "Окно настроек не запустилось из $PREFIX/bin: SUPER+I его не откроет. Сообщите об этом."
+fi
+
 say "Готово ($([[ -n "$PREV_VERSION" ]] && echo "обновлено с $PREV_VERSION" || echo "новая установка"))"
 cat <<MSG
   Композитор:  $PREFIX/bin/InfinityHyprland
