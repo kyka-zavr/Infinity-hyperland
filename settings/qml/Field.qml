@@ -9,13 +9,13 @@ Rectangle {
     signal edited(string text)
 
     implicitWidth: 240
-    implicitHeight: 34
-    radius: 8
-    color: Style.well
-    border.width: input.activeFocus ? 2 : 0
-    border.color: Style.accent
+    implicitHeight: 32
+    radius: Style.radius
+    color: Style.tint
+    border.width: 1
+    border.color: input.activeFocus ? Style.accent : "transparent"
 
-    Text { id: hint; anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 12; color: Style.subtext; font.pixelSize: 14; visible: input.text.length === 0 && !input.activeFocus }
+    Text { id: hint; anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 12; color: Style.subtext; font.pixelSize: 12; visible: input.text.length === 0 && !input.activeFocus }
     TextInput {
         id: input
         anchors.fill: parent
@@ -24,8 +24,9 @@ Rectangle {
         color: Style.text
         selectionColor: Style.accent
         selectedTextColor: Style.accentText
-        font.pixelSize: 14
+        font.pixelSize: 12
         clip: true
         onEditingFinished: root.edited(text)
+        Keys.onEscapePressed: (e) => { root.edited(text); focus = false; e.accepted = true }   // Esc leaves the field first, a second Esc closes the window
     }
 }

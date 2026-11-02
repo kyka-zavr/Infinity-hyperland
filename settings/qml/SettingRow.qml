@@ -17,8 +17,8 @@ Item {
         anchors.right: slot.left; anchors.rightMargin: 16
         anchors.verticalCenter: parent.verticalCenter
         spacing: 2
-        Text { text: root.title; color: Style.text; font.pixelSize: 15; width: parent.width; elide: Text.ElideRight }
-        Text { visible: root.subtitle !== ""; text: root.subtitle; color: Style.subtext; font.pixelSize: 12; width: parent.width; wrapMode: Text.WordWrap }
+        Text { text: root.title; color: Style.text; font.pixelSize: 13; width: parent.width; elide: Text.ElideRight }
+        Text { visible: root.subtitle !== ""; text: root.subtitle; color: Style.subtext; font.pixelSize: 11; width: parent.width; wrapMode: Text.WordWrap }
     }
     Row { id: slot; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 8 }
 }

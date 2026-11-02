@@ -10,6 +10,15 @@ struct Theme {
     QString               name;
     QMap<QString, QString> colors;
 
+    // a palette can follow a JSON file of another program (for example the serpantinum rice, ~/.local/state/serpantinum/qs_colors.json):
+    // import.map says which key of that file gives which of our colors, "key" or "key:aa" (aa is an alpha override)
+    QString                importPath;                 // "" = a plain static palette
+    QString                importEnv;                  // an environment variable that can override the path
+    QMap<QString, QString> importMap;
+    QString                importFile() const;         // the resolved file (env override, ~ expanded)
+    bool                   isDynamic() const { return !importPath.isEmpty(); }
+    void                   resolveImport();            // fills the colors from the file when it exists
+
     QString               color(const QString& key) const;            // "rrggbbaa", falls back to the dark theme
     QString               hex(const QString& key) const;              // "#rrggbb"
     QString               luaColor(const QString& key) const;         // "rgba(rrggbbaa)" for hl.config

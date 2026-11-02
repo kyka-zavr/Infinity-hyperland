@@ -107,6 +107,11 @@ QString LuaGenerator::generate(const SettingsStore& store, const Theme& theme, c
         line();
     }
 
+    // --- a palette that follows another program's file: re-applied by a small background watcher started with the session
+    if (theme.isDynamic())
+        line("hl.on(\"hyprland.start\", function() hl.exec_cmd(" + quote(settingsBinary + " --watch") + ") end)");
+    line();
+
     // --- the settings window: floating, centered
     line(R"(hl.window_rule({ name = "infinity-settings", match = { class = "^infinity-settings$" }, float = true, center = true, size = "1040 720" }))");
     line();

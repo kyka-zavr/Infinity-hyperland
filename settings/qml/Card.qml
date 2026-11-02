@@ -8,10 +8,12 @@ Rectangle {
 
     width: parent ? parent.width : 400
     implicitHeight: col.implicitHeight + (title !== "" ? 56 : 24)
-    radius: Style.radius
+    radius: Style.radius + 2
     color: Style.surface
+    border.width: 1
+    border.color: Style.line
 
-    Text { visible: root.title !== ""; text: root.title; color: Style.accent; font.pixelSize: 13; font.bold: true; font.capitalization: Font.AllUppercase
+    Text { visible: root.title !== ""; text: root.title; color: Style.subtext; font.pixelSize: 11; font.bold: true; font.letterSpacing: 1.2; font.capitalization: Font.AllUppercase
            anchors.left: parent.left; anchors.leftMargin: 18; anchors.top: parent.top; anchors.topMargin: 16 }
     Column {
         id: col

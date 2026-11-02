@@ -1,6 +1,7 @@
 import QtQuick
 import Infinity
 
+// a progress bar you can drag, without a knob
 Item {
     id: root
     property real from: 0
@@ -10,23 +11,33 @@ Item {
     signal moved(real value)
 
     implicitWidth: 240
-    implicitHeight: 28
+    implicitHeight: 22
 
-    Rectangle { id: track; anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 6; radius: 3; color: Style.well
-        Rectangle { width: knob.x + knob.width / 2; height: parent.height; radius: 3; color: Style.accent } }
+    readonly property real pos: Math.max(0, Math.min(1, (value - from) / Math.max(0.0001, to - from)))
+
     Rectangle {
-        id: knob
-        width: 20; height: 20; radius: 10
-        anchors.verticalCenter: parent.verticalCenter
-        x: (root.value - root.from) / (root.to - root.from) * (root.width - width)
-        color: Style.accent
-        border.color: Style.accentText; border.width: 2
+        id: track
+        anchors.fill: parent
+        radius: height / 2
+        color: Style.tint
+        clip: true
+        Rectangle {
+            width: Math.max(parent.height, parent.width * root.pos)
+            height: parent.height
+            radius: parent.radius
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0; color: Style.accent }
+                GradientStop { position: 1; color: Qt.lighter(Style.accent, 1.12) }
+            }
+            Behavior on width { NumberAnimation { duration: 90 } }
+        }
     }
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
         function setFrom(mx) {
-            let t = Math.max(0, Math.min(1, (mx - knob.width / 2) / (root.width - knob.width)))
+            let t = Math.max(0, Math.min(1, mx / root.width))
             let v = root.from + t * (root.to - root.from)
             v = Math.round(v / root.step) * root.step
             root.moved(Math.max(root.from, Math.min(root.to, v)))

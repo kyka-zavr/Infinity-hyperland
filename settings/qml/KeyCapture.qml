@@ -10,8 +10,8 @@ Rectangle {
 
     implicitWidth: 200
     implicitHeight: 32
-    radius: 8
-    color: capturing ? Style.accent : (area.containsMouse ? Style.surfaceHi : Style.well)
+    radius: Style.radius
+    color: capturing ? Style.accent : (area.containsMouse ? Style.tintHover : Style.tint)
     focus: capturing
 
     function begin() { capturing = true; forceActiveFocus(); Backend.captureMode(true) }
@@ -21,7 +21,7 @@ Rectangle {
         anchors.centerIn: parent
         text: root.capturing ? "Press the keys... (Esc cancels)" : (root.keys === "" ? "not set" : root.keys)
         color: root.capturing ? Style.accentText : (root.keys === "" ? Style.subtext : Style.text)
-        font.pixelSize: 13
+        font.pixelSize: 12
         elide: Text.ElideRight
         width: parent.width - 12
         horizontalAlignment: Text.AlignHCenter

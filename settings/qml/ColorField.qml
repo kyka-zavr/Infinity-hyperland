@@ -15,9 +15,9 @@ Item {
         width: 28; height: 28; radius: 7
         anchors.verticalCenter: parent.verticalCenter
         color: Style.c[root.name]
-        border.width: 1; border.color: Style.surfaceHi
+        border.width: 1; border.color: Style.line
     }
-    Text { anchors.left: sw.right; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: root.label; color: Style.text; font.pixelSize: 14 }
+    Text { anchors.left: sw.right; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: root.label; color: Style.text; font.pixelSize: 12 }
     Field {
         id: hex
         anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter

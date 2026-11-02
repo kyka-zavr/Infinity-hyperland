@@ -6,7 +6,8 @@
 
 namespace Applier {
     struct Options {
-        bool reload = true;   // run `hyprctl reload` afterwards
+        bool reload       = true;   // run `hyprctl reload` afterwards
+        bool spawnWatcher = true;   // start the background watcher when the palette follows a file
     };
 
     struct Result {

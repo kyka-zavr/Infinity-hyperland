@@ -14,10 +14,18 @@
 #include "Paths.hpp"
 #include "SettingsStore.hpp"
 #include "Theme.hpp"
+#include "Watcher.hpp"
 
 #include "Backend.hpp"
 
+#include <unistd.h>
+
 #include <QCoreApplication>
+#include <QLocalServer>
+#include <QLocalSocket>
+#include <QLockFile>
+#include <QStandardPaths>
+#include <QFont>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
@@ -89,10 +97,31 @@ static int runCli(const QStringList& args) {
     return 2;
 }
 
+static QString instanceName() {
+    return QString("infinity-settings-%1").arg(qgetenv("USER").isEmpty() ? QString::number(getuid()) : QString::fromLocal8Bit(qgetenv("USER")));
+}
+
 static int runGui(int argc, char** argv, const QString& screenshot, int page) {
     QGuiApplication app(argc, argv);
+
+    // one window: starting it again (SUPER+I) closes the one that is open
+    QLocalServer server;
+    if (screenshot.isEmpty()) {
+        QLocalSocket probe;
+        probe.connectToServer(instanceName());
+        if (probe.waitForConnected(300)) {
+            probe.write("quit\n");
+            probe.waitForBytesWritten(500);
+            return 0;
+        }
+        QLocalServer::removeServer(instanceName());
+        server.listen(instanceName());
+        QObject::connect(&server, &QLocalServer::newConnection, &app, [&app] { app.quit(); });
+    }
+
     QGuiApplication::setDesktopFileName("infinity-settings"); // the window class used by window rules
     QGuiApplication::setApplicationName("infinity-settings");
+    QGuiApplication::setFont(QFont("Adwaita Mono")); // the look of the serpantinum rice; falls back to the system font when missing
     QQuickStyle::setStyle("Basic");
 
     Backend backend;
@@ -115,6 +144,26 @@ static int runGui(int argc, char** argv, const QString& screenshot, int page) {
     return app.exec();
 }
 
+// --watch: no window; re-applies when the file a dynamic palette follows (or settings.json) changes
+static int runWatch(int argc, char** argv) {
+    QCoreApplication app(argc, argv);
+
+    const auto RUNTIME = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    QLockFile  lock((RUNTIME.isEmpty() ? QString("/tmp") : RUNTIME) + "/infinity-settings-watch.lock");
+    lock.setStaleLockTime(0);
+    if (!lock.tryLock(0))
+        return 0; // another watcher is running
+
+    Watcher watcher;
+    auto    apply = [&watcher] {
+        Applier::apply({.reload = true, .spawnWatcher = false});
+        watcher.refresh();
+    };
+    QObject::connect(&watcher, &Watcher::themeSourceChanged, &app, apply);
+    QObject::connect(&watcher, &Watcher::settingsFileChanged, &app, apply);
+    return app.exec();
+}
+
 int main(int argc, char** argv) {
     QStringList args;
     for (int i = 1; i < argc; ++i)
@@ -123,6 +172,8 @@ int main(int argc, char** argv) {
     // the window: no arguments, or --screenshot <file> [page] for a headless render (QT_QPA_PLATFORM=offscreen)
     if (args.isEmpty())
         return runGui(argc, argv, {}, 0);
+    if (args[0] == "--watch")
+        return runWatch(argc, argv);
     if (args[0] == "--screenshot" && args.size() >= 2)
         return runGui(argc, argv, args[1], args.size() >= 3 ? args[2].toInt() : 0);
 

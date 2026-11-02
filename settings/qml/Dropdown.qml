@@ -21,8 +21,8 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: 8
-        color: area.containsMouse ? Style.surfaceHi : Style.well
+        radius: Style.radius
+        color: area.containsMouse ? Style.tintHover : Style.tint
         Text {
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: parent.left; anchors.leftMargin: 12
@@ -30,7 +30,7 @@ Item {
             elide: Text.ElideRight
             text: root.labelOf(root.value) || root.placeholder
             color: root.labelOf(root.value) ? Style.text : Style.subtext
-            font.pixelSize: 14
+            font.pixelSize: 12
         }
         Text { id: arrow; anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: "▾"; color: Style.subtext }
         MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: pop.open() }
@@ -42,7 +42,7 @@ Item {
         width: Math.max(root.width, 260)
         height: Math.min(list.contentHeight + 12, 320)
         padding: 6
-        background: Rectangle { radius: 10; color: Style.surface; border.color: Style.surfaceHi }
+        background: Rectangle { radius: Style.radius; color: Style.surface; border.width: 1; border.color: Style.line }
         ListView {
             id: list
             anchors.fill: parent
@@ -50,10 +50,10 @@ Item {
             model: root.model
             delegate: Rectangle {
                 required property var modelData
-                width: list.width; height: 32; radius: 6
-                color: m.containsMouse ? Style.surfaceHi : "transparent"
+                width: list.width; height: 30; radius: Style.radius - 2
+                color: m.containsMouse ? Style.tintHover : "transparent"
                 Text { anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 10; anchors.right: parent.right; anchors.rightMargin: 10
-                       elide: Text.ElideRight; text: modelData.label; color: Style.text; font.pixelSize: 14 }
+                       elide: Text.ElideRight; text: modelData.label; color: Style.text; font.pixelSize: 12 }
                 MouseArea { id: m; anchors.fill: parent; hoverEnabled: true; onClicked: { pop.close(); root.picked(modelData.value) } }
             }
             ScrollBar.vertical: ScrollBar {}

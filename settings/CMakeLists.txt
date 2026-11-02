@@ -14,6 +14,7 @@ qt_add_library(infinity_core STATIC
   src/LuaGenerator.cpp
   src/Templates.cpp
   src/Applier.cpp
+  src/Watcher.cpp
 )
 target_include_directories(infinity_core PUBLIC src)
 target_link_libraries(infinity_core PUBLIC Qt6::Core)
@@ -24,7 +25,7 @@ qt_policy(SET QTP0001 NEW)
 
 set_source_files_properties(qml/Style.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
-qt_add_executable(infinity-settings src/main.cpp src/Backend.cpp src/Backend.hpp)
+qt_add_executable(infinity-settings src/main.cpp src/Backend.cpp src/Backend.hpp src/Watcher.hpp)
 qt_add_qml_module(infinity-settings
   URI Infinity
   VERSION 1.0

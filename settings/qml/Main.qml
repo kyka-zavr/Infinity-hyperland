@@ -13,6 +13,9 @@ ApplicationWindow {
     color: Style.bg
 
     property int page: 0
+
+    // Esc closes the window (not while a key is being captured; an open list or a text field takes Esc first)
+    Shortcut { sequence: "Escape"; enabled: !Backend.capturing; onActivated: Qt.quit() }
     readonly property var pages: [
         { name: "Infinity", icon: "∞", source: "PageInfinity.qml" },
         { name: "Keyboard", icon: "⌨", source: "PageKeyboard.qml" },
@@ -25,10 +28,11 @@ ApplicationWindow {
         id: side
         width: 210
         anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.left: parent.left
-        color: Style.surface
+        color: Style.panel
+        Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Style.line }
 
-        Text { id: brand; text: "Infinity"; color: Style.accent; font.pixelSize: 22; font.bold: true; x: 22; y: 22 }
-        Text { anchors.top: brand.bottom; x: 22; text: "settings"; color: Style.subtext; font.pixelSize: 13 }
+        Text { id: brand; text: "Infinity"; color: Style.text; font.pixelSize: 20; font.bold: true; x: 22; y: 22 }
+        Text { anchors.top: brand.bottom; x: 22; text: "settings"; color: Style.subtext; font.pixelSize: 11; font.letterSpacing: 1.5 }
 
         Column {
             anchors.top: parent.top; anchors.topMargin: 88
@@ -40,10 +44,11 @@ ApplicationWindow {
                 Rectangle {
                     required property var modelData
                     required property int index
-                    width: parent.width; height: 42; radius: 9
-                    color: win.page === index ? Style.accent : (m.containsMouse ? Style.surfaceHi : "transparent")
-                    Text { x: 14; anchors.verticalCenter: parent.verticalCenter; text: modelData.icon; font.pixelSize: 17; color: win.page === index ? Style.accentText : Style.subtext }
-                    Text { x: 44; anchors.verticalCenter: parent.verticalCenter; text: modelData.name; font.pixelSize: 15; color: win.page === index ? Style.accentText : Style.text }
+                    width: parent.width; height: 40; radius: Style.radius
+                    color: win.page === index ? Style.accent : (m.containsMouse ? Style.tintHover : "transparent")
+                    Behavior on color { ColorAnimation { duration: 110 } }
+                    Text { x: 14; anchors.verticalCenter: parent.verticalCenter; text: modelData.icon; font.family: Style.iconFont; font.pixelSize: 16; color: win.page === index ? Style.accentText : Style.subtext }
+                    Text { x: 44; anchors.verticalCenter: parent.verticalCenter; text: modelData.name; font.pixelSize: 13; color: win.page === index ? Style.accentText : Style.text }
                     MouseArea { id: m; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: win.page = index }
                 }
             }
@@ -60,7 +65,7 @@ ApplicationWindow {
         ScrollBar.vertical: ScrollBar {}
         boundsBehavior: Flickable.StopAtBounds
 
-        Text { id: title; text: win.pages[win.page].name; color: Style.text; font.pixelSize: 26; font.bold: true }
+        Text { id: title; text: win.pages[win.page].name; color: Style.text; font.pixelSize: 22; font.bold: true }
         Loader {
             id: loader
             y: title.height + 16
@@ -73,8 +78,9 @@ ApplicationWindow {
         id: bar
         anchors.left: side.right; anchors.right: parent.right; anchors.bottom: parent.bottom
         height: 36
-        color: Style.surface
-        Text { anchors.verticalCenter: parent.verticalCenter; x: 18; text: Backend.status !== "" ? Backend.status : "Changes apply as you make them"; color: Style.subtext; font.pixelSize: 12 }
-        Text { anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right; anchors.rightMargin: 18; text: "Theme: " + Backend.theme; color: Style.subtext; font.pixelSize: 12 }
+        color: Style.panel
+        Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: Style.line }
+        Text { anchors.verticalCenter: parent.verticalCenter; x: 18; text: Backend.status !== "" ? Backend.status : "Changes apply as you make them"; color: Style.subtext; font.pixelSize: 11 }
+        Text { anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right; anchors.rightMargin: 18; text: "Theme: " + Backend.theme + (Backend.themeFollowsFile ? "  (follows its source)" : ""); color: Style.subtext; font.pixelSize: 11 }
     }
 }

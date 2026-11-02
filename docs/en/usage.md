@@ -104,9 +104,13 @@ Hyprland 0.57 reads only Lua configs (`hyprland.lua`); the old `hyprland.conf` f
 
 Everything is stored in `~/.config/infinity-hyprland/settings.json`. `infinity-settings --apply` turns it into `infinity.lua` (included from your `hyprland.lua`) and reloads the compositor; `--print`, `--get <path>` and `--set <path> <json>` are there for scripts. You can edit `settings.json` by hand.
 
+The window is a single instance: `SUPER+I` again (or `Esc`) closes it, so windows never pile up. `Esc` first leaves a text field, closes an open list or cancels a key capture, and closes the window when nothing else is active.
+
 ### Color scheme
 
 One palette colors everything we draw: the window switcher, the settings window and, when "Manage these settings" is on, window borders and shadows. A theme is a file `themes/<name>.json` with named colors (`panel`, `bg`, `surface`, `surface_hi`, `well`, `text`, `subtext`, `accent`, `accent_text`, `border_active`, `border_inactive`, `shadow`, `danger`, `success`). Two themes are built in (`dark`, `light`); editing a color makes your own copy named `custom`, and you can add your own files.
+
+**A palette that follows another program.** A theme file may carry an `import` section: a JSON file of another program and a map from its keys to ours. The built-in `serpantinum` theme (offered when that rice is installed) reads `~/.local/state/serpantinum/qs_colors.json` (or the file named by `QS_COLORS_JSON`) and follows it live: when the rice changes its colors (a new wallpaper, a new preset), the settings window, the window switcher and the generated config change with it; a small background watcher (`infinity-settings --watch`, started with the session) does this when the window is closed. Editing a color of such a theme turns it into a fixed copy named `custom`. Map format: `"accent": "blue"` takes the key `blue`, `"panel": "mantle:f0"` takes `mantle` with alpha `f0`.
 
 **Export to other programs.** Put a template into `~/.config/infinity-hyprland/templates/`: a file `*.tmpl` whose first line is `@target: <path>` and whose body uses placeholders:
 

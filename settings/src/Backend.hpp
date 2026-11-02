@@ -3,6 +3,7 @@
 
 #include "SettingsStore.hpp"
 #include "Theme.hpp"
+#include "Watcher.hpp"
 
 #include <QObject>
 #include <QTimer>
@@ -18,6 +19,8 @@ class Backend : public QObject {
     Q_PROPERTY(bool compositorRunning READ compositorRunning CONSTANT)
     Q_PROPERTY(QString status READ status NOTIFY statusChanged)
     Q_PROPERTY(int revision READ revision NOTIFY settingsChanged)
+    Q_PROPERTY(bool capturing READ capturing NOTIFY capturingChanged)
+    Q_PROPERTY(bool themeFollowsFile READ themeFollowsFile NOTIFY themeChanged)
 
   public:
     explicit Backend(QObject* parent = nullptr);
@@ -29,6 +32,8 @@ class Backend : public QObject {
     bool        compositorRunning() const;
     QString     status() const;
     int         revision() const { return m_rev; }
+    bool        capturing() const { return m_capturing; }
+    bool        themeFollowsFile() const { return m_theme.isDynamic(); }
 
     // generic settings access, dotted paths ("keyboard.mode")
     Q_INVOKABLE QVariant get(const QString& path) const;
@@ -73,6 +78,7 @@ class Backend : public QObject {
     void themeChanged();
     void statusChanged();
     void settingsChanged();
+    void capturingChanged();
 
   private:
     void     changed();
@@ -86,4 +92,6 @@ class Backend : public QObject {
     QTimer        m_applyTimer;
     QString       m_status;
     int           m_rev = 0;
+    bool          m_capturing = false;
+    Watcher       m_watcher;
 };

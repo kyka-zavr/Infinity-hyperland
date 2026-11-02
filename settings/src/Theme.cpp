@@ -23,8 +23,47 @@ QStringList Theme::colorKeys() {
     return {"panel", "bg", "surface", "surface_hi", "well", "text", "subtext", "accent", "accent_text", "border_active", "border_inactive", "shadow", "danger", "success"};
 }
 
+// follows the serpantinum rice (Catppuccin-style names); the file is written by its theme generator
+static const char* SERPANTINUM = R"({"name":"serpantinum",
+  "import":{"path":"~/.local/state/serpantinum/qs_colors.json","env":"QS_COLORS_JSON","map":{
+    "panel":"mantle:f0","bg":"base","surface":"surface0","surface_hi":"surface1","well":"crust","text":"text","subtext":"subtext0",
+    "accent":"blue","accent_text":"crust","border_active":"blue","border_inactive":"surface1:aa","shadow":"crust:66","danger":"red","success":"green"}},
+  "colors":{"panel":"#121217f0","bg":"#121217","surface":"#1f1f26","surface_hi":"#292b38","well":"#0d0d12","text":"#ffffff","subtext":"#b8bdcc",
+    "accent":"#5c8fff","accent_text":"#ffffff","border_active":"#5c8fff","border_inactive":"#595959aa","shadow":"#00000066","danger":"#ff5c5c","success":"#5cd68a"}})";
+
 QStringList Theme::builtinNames() {
-    return {"dark", "light"};
+    QStringList n = {"dark", "light"};
+    if (QFile::exists(fromJson(SERPANTINUM).importFile()))
+        n << "serpantinum";   // only offered when that rice is installed
+    return n;
+}
+
+QString Theme::importFile() const {
+    if (!importEnv.isEmpty()) {
+        if (const auto E = qEnvironmentVariable(importEnv.toUtf8().constData()); !E.isEmpty())
+            return Paths::expandHome(E);
+    }
+    return Paths::expandHome(importPath);
+}
+
+void Theme::resolveImport() {
+    if (!isDynamic())
+        return;
+
+    QFile f(importFile());
+    if (!f.open(QIODevice::ReadOnly))
+        return;
+
+    const auto SRC = QJsonDocument::fromJson(f.readAll()).object();
+    for (auto it = importMap.begin(); it != importMap.end(); ++it) {
+        const auto SPEC  = it.value().split(':');
+        const auto VALUE = normalize(SRC.value(SPEC[0]).toString());
+        if (VALUE.isEmpty())
+            continue;
+
+        // an alpha in the spec replaces the one of the source color
+        colors[it.key()] = SPEC.size() > 1 && SPEC[1].size() == 2 ? VALUE.left(6) + SPEC[1].toLower() : VALUE;
+    }
 }
 
 QString Theme::normalize(const QString& text) {
@@ -73,6 +112,14 @@ Theme Theme::fromJson(const QByteArray& json) {
     const auto  OBJ = QJsonDocument::fromJson(json).object();
     t.name          = OBJ.value("name").toString("custom");
 
+    if (const auto IMP = OBJ.value("import").toObject(); !IMP.isEmpty()) {
+        t.importPath = IMP.value("path").toString();
+        t.importEnv  = IMP.value("env").toString();
+        const auto MAP = IMP.value("map").toObject();
+        for (auto it = MAP.begin(); it != MAP.end(); ++it)
+            t.importMap[it.key()] = it.value().toString();
+    }
+
     const auto COLORS = OBJ.value("colors").toObject();
     for (auto it = COLORS.begin(); it != COLORS.end(); ++it) {
         if (const auto N = normalize(it.value().toString()); !N.isEmpty())
@@ -87,11 +134,20 @@ QByteArray Theme::toJson() const {
     for (const auto& k : colorKeys())
         colorsObj[k] = "#" + color(k);
 
-    return QJsonDocument(QJsonObject{{"name", name}, {"colors", colorsObj}}).toJson(QJsonDocument::Indented);
+    QJsonObject root{{"name", name}, {"colors", colorsObj}};
+    if (isDynamic()) {
+        QJsonObject map;
+        for (auto it = importMap.begin(); it != importMap.end(); ++it)
+            map[it.key()] = it.value();
+        root["import"] = QJsonObject{{"path", importPath}, {"env", importEnv}, {"map", map}};
+    }
+    return QJsonDocument(root).toJson(QJsonDocument::Indented);
 }
 
 Theme Theme::builtin(const QString& name) {
-    return fromJson(name == "light" ? LIGHT : DARK);
+    auto t = fromJson(name == "light" ? LIGHT : (name == "serpantinum" ? SERPANTINUM : DARK));
+    t.resolveImport();
+    return t;
 }
 
 Theme Theme::load(const QString& name) {
@@ -100,6 +156,7 @@ Theme Theme::load(const QString& name) {
         auto t = fromJson(f.readAll());
         if (t.name.isEmpty() || t.name == "custom")
             t.name = name;
+        t.resolveImport();
         return t;
     }
 

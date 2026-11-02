@@ -58,6 +58,10 @@ Applier::Result Applier::apply(const Options& options) {
         r.messages << QString("post command exited with %1").arg(p.exitCode());
     }
 
+    // a palette that follows another program's file keeps following it while this session runs
+    if (options.reload && options.spawnWatcher && THEME.isDynamic())
+        QProcess::startDetached(QCoreApplication::applicationFilePath(), {"--watch"});
+
     if (options.reload) {
         const auto HYPRCTL = findHyprctl();
         if (HYPRCTL.isEmpty())

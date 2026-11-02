@@ -13,6 +13,8 @@ Version scheme: `v<Hyprland version>-infinity.<n>`. Every release notes page als
 - **Bind editor**: rebind or disable the binds of the fork, add your own, and disable or move binds from your own Lua files (new Lua function `hl.rebind`).
 - **Text installer** (`./install.sh` without arguments): config choice, **keyboard layouts**, layout and Caps Lock behaviour, color scheme; keyboard first, mouse where the terminal reports it (terminal emulators, the console with `gpm`).
 - Installer: builds and installs the settings window, migrates the old Infinity bind block of a previous version to the settings, installs as the user so the build folder never gets root-owned files, build threads are chosen from total memory (up to 6).
+- The settings window is a single instance and closes with `SUPER+I` again or `Esc`; its look follows the serpantinum rice (monospace font, rounded translucent controls, bar sliders).
+- **Palettes that follow another program's file**: the built-in `serpantinum` theme follows `~/.local/state/serpantinum/qs_colors.json` live.
 - **Keyboard layouts**: `infinity:kb_layout_mode` (one layout for the session or one per window), `infinity:kb_default_layout` (layout a new window starts with), `infinity:caps_mode` (normal, per window, always on) and the `kblayout next|prev|<n>` message for a layout bind.
 
 ## v0.57.0-infinity.1 (2026-11-02)

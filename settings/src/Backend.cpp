@@ -23,6 +23,21 @@ Backend::Backend(QObject* parent) : QObject(parent) {
     Theme::installBuiltins();
     m_theme = Theme::load(m_store.get("theme").toString("dark"));
 
+    // the palette follows the file of another program (serpantinum): a change there is a change here
+    connect(&m_watcher, &Watcher::themeSourceChanged, this, [this] {
+        if (!m_theme.isDynamic())
+            return;
+        m_theme = Theme::load(m_store.get("theme").toString("dark"));
+        emit themeChanged();
+        scheduleApply();
+    });
+    connect(&m_watcher, &Watcher::settingsFileChanged, this, [this] {
+        m_store.load();
+        m_theme = Theme::load(m_store.get("theme").toString("dark"));
+        changed();
+        emit themeChanged();
+    });
+
     m_applyTimer.setSingleShot(true);
     m_applyTimer.setInterval(600);
     connect(&m_applyTimer, &QTimer::timeout, this, &Backend::applyNow);
@@ -110,6 +125,7 @@ void Backend::setTheme(const QString& name) {
     m_store.set("theme", name);
     m_theme = Theme::load(name);
     m_theme.name = name;
+    m_watcher.refresh();
     emit themeChanged();
     scheduleApply();
 }
@@ -141,10 +157,14 @@ void Backend::setColor(const QString& key, const QString& hex) {
     if (N.isEmpty())
         return;
 
-    // builtin themes stay as they are: the first edit makes a copy named "custom"
-    if (Theme::builtinNames().contains(m_theme.name)) {
+    // builtin themes stay as they are: the first edit makes a copy named "custom"; a palette that follows a file
+    // becomes a fixed snapshot (the edit would be overwritten by the next change of that file otherwise)
+    if (Theme::builtinNames().contains(m_theme.name) || m_theme.isDynamic()) {
         m_theme.name = "custom";
+        m_theme.importPath.clear();
+        m_theme.importMap.clear();
         m_store.set("theme", "custom");
+        m_watcher.refresh();
     }
 
     m_theme.colors[key] = N;
@@ -474,6 +494,11 @@ QString Backend::describeKey(int qtKey, int modifiers) const {
 }
 
 void Backend::captureMode(bool on) {
+    if (m_capturing != on) {
+        m_capturing = on;
+        emit capturingChanged();
+    }
+
     if (!compositorRunning())
         return;
 
