@@ -2,6 +2,7 @@
 #include "SceneResources.hpp"
 #include "Renderer.hpp"
 #include "../layout/LayoutManager.hpp"
+#include "../layout/algorithm/floating/infinity/InfinityCanvas.hpp"
 #include "../desktop/view/window/Window.hpp"
 #include "../desktop/view/window/WindowEffectsController.hpp"
 #include "../desktop/view/window/WindowPresentation.hpp"
@@ -471,10 +472,14 @@ void IElementRenderer::drawTex(CRenderContext& ctx, WP<CTexPassElement> element,
         ctx.m_data.clipBox = {};
     }};
 
+    // the render modifiers (the Infinity zoom) are made for layout-global boxes: the monitor damage is already in screen
+    // coordinates, so scaling it by the zoom clips the window at monitor size * zoom. Windows on the canvas skip that.
+    const bool CANVASWINDOW = element->m_data.blurOwner && Layout::Floating::isCanvasWindow(element->m_data.blurOwner);
+
     if (element->m_data.blur) {
         // make a damage region for this window
         CRegion texDamage = element->m_data.useProvidedDamage ? element->m_data.damage : m_renderData.damage;
-        if (!element->m_data.useProvidedDamage && !m_renderData.renderingTransformedSource)
+        if (!element->m_data.useProvidedDamage && !m_renderData.renderingTransformedSource && !CANVASWINDOW)
             texDamage.intersect(element->m_data.box.x, element->m_data.box.y, element->m_data.box.width, element->m_data.box.height);
 
         // While renderTextureInternalWithDamage will clip the blur as well,
@@ -485,7 +490,7 @@ void IElementRenderer::drawTex(CRenderContext& ctx, WP<CTexPassElement> element,
         if (texDamage.empty())
             return;
 
-        if (!element->m_data.useProvidedDamage)
+        if (!element->m_data.useProvidedDamage && !CANVASWINDOW)
             m_renderData.renderModif.applyToRegion(texDamage);
 
         element->m_data.damage = texDamage;
