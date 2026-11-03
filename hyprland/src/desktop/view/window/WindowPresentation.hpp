@@ -65,8 +65,6 @@ namespace Desktop::View {
         Render::SWindowRenderPresentation                 renderPresentation() const;
         Render::SWindowRenderPresentation                 renderPresentation(Render::eSceneMode mode) const;
         Render::SWindowRenderPresentation                 renderPresentation(const SP<Workspace::CWorkspacePresentable>& presentation) const;
-        // for windows on the Infinity canvas: no workspace alpha or offset, the window is drawn by every monitor that sees it
-        Render::SWindowRenderPresentation                 renderPresentationCanvas() const;
         float                                             rounding();
         float                                             roundingPower();
         bool                                              isInCurvedCorner(double x, double y);

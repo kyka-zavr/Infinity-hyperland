@@ -261,10 +261,6 @@ Render::SWindowRenderPresentation CWindowPresentation::renderPresentation(const 
     return Render::resolveWindowPresentation(renderPresentationState(presentation));
 }
 
-Render::SWindowRenderPresentation CWindowPresentation::renderPresentationCanvas() const {
-    return Render::resolveWindowPresentation(renderPresentationState(nullptr));
-}
-
 Render::SWindowPresentationState CWindowPresentation::renderPresentationState(const SP<Workspace::CWorkspacePresentable>& presentation) const {
     // Decoration geometry can be queried before all window animations are initialized.
     const auto ALPHA = [this](eWindowAlpha channel) { return alpha(channel) ? alphaValue(channel) : 1.F; };

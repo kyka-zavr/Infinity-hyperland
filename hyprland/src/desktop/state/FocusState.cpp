@@ -12,7 +12,6 @@
 #include "../../managers/fullscreen/FullscreenController.hpp"
 #include "../../layout/LayoutManager.hpp"
 #include "../../layout/target/WindowTarget.hpp"
-#include "../../layout/algorithm/floating/infinity/InfinityCanvas.hpp"
 #include "../../event/EventBus.hpp"
 #include "../../workspace/query/Query.hpp"
 
@@ -168,8 +167,7 @@ void CFocusState::rawWindowFocus(PHLWINDOW pWindow, eFocusReason reason, SP<CWLS
 
     const auto PMONITOR = pWindow->m_monitor.lock();
 
-    // a window on the Infinity canvas is already on screen, there is no workspace to switch to
-    if ((!pWindow->m_workspace || !pWindow->m_workspace->visible()) && !Layout::Floating::isCanvasWindow(pWindow)) {
+    if (!pWindow->m_workspace || !pWindow->m_workspace->visible()) {
         const auto PWORKSPACE = pWindow->m_workspace;
         // This is to fix incorrect feedback on the focus history.
         PWORKSPACE->rememberFocusedWindow(pWindow);

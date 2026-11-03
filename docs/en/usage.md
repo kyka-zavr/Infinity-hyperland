@@ -34,6 +34,7 @@ Binds below come from `hyprland/example/hyprland.lua` (section INFINITY) or from
 | Zoom | `CTRL+wheel` around the cursor (built in) |
 | Zoom from the keyboard | `SUPER+CTRL+=` zoom in, `SUPER+CTRL+-` zoom out |
 | Window switcher | `ALT+TAB`, back: `ALT+SHIFT+TAB` |
+| Toggle fullscreen | `F11` |
 
 While a window is dragged in Infinity and the pointer comes near the edge of a monitor, the canvas slides under it, so a window is never stopped by a screen border: drag it to the edge and keep dragging.
 

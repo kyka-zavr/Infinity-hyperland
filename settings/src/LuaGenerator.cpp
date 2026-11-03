@@ -11,6 +11,7 @@ const QList<ManagedBind>& LuaGenerator::managedBinds() {
         {"switcher_prev", "Window switcher, backwards", "ALT + SHIFT + Tab", R"(hl.dsp.layout("alttab prev"))", false},
         {"layout_next", "Next keyboard layout", "SUPER + SPACE", R"(hl.dsp.layout("kblayout next"))", false},
         {"settings", "Open the settings", "SUPER + I", R"(hl.dsp.exec_cmd(%SETTINGS%))", false},
+        {"fullscreen", "Toggle fullscreen", "F11", R"(hl.dsp.window.fullscreen())", false},
         {"pan_left", "Pan the canvas left", "SUPER + CTRL + left", R"(hl.dsp.layout("infinity pan 150 0"))", true},
         {"pan_right", "Pan the canvas right", "SUPER + CTRL + right", R"(hl.dsp.layout("infinity pan -150 0"))", true},
         {"pan_up", "Pan the canvas up", "SUPER + CTRL + up", R"(hl.dsp.layout("infinity pan 0 150"))", true},

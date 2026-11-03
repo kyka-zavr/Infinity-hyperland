@@ -24,7 +24,6 @@
 #include "../../../managers/fullscreen/FullscreenController.hpp"
 #include "../../../managers/eventLoop/EventLoopManager.hpp"
 #include "../../../layout/LayoutManager.hpp"
-#include "../../../layout/algorithm/floating/infinity/InfinityCanvas.hpp"
 #include "../../../layout/space/Space.hpp"
 #include "../../../layout/target/Target.hpp"
 #include "../../../render/Renderer.hpp"
@@ -550,7 +549,7 @@ ActionResult Actions::focus(PHLWINDOW window) {
     updateRelativeCursorCoords();
 
     if (Desktop::focusState()->monitor() && Desktop::focusState()->monitor()->m_activeWorkspace != window->m_workspace &&
-        Desktop::focusState()->monitor()->m_activeSpecialWorkspace != window->m_workspace && !Layout::Floating::isCanvasWindow(window)) // NOLINTNEXTLINE
+        Desktop::focusState()->monitor()->m_activeSpecialWorkspace != window->m_workspace) // NOLINTNEXTLINE
         Actions::changeWorkspace(PWORKSPACE);
 
     Desktop::focusState()->fullWindowFocus(window, Desktop::FOCUS_REASON_DISPATCH_FOCUSWINDOW, nullptr, false);

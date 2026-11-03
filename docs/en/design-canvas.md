@@ -2,7 +2,7 @@
 
 [English](design-canvas.md) | [Русский](../ru/design-canvas.md)
 
-Status: released in v0.57.0-infinity.3. The mode is one for the session; every monitor draws every window of the canvas that its view covers, without a workspace filter; focus does not switch workspaces; the camera (view, zoom, `visibleRect(monitor)`) lives on the canvas. Still to do: removing the per-workspace Infinity algorithm, an explicit canvas z-order, clipping at the renderer level, a narrower damage under zoom, special workspaces (scratchpads stay outside the canvas) and the `hyprtester` scenarios.
+Status: released in v0.57.0-infinity.3. The mode is one for the session; every workspace is a page of the canvas and the monitor draws the windows of its active page; focus does not switch workspaces; the camera (view, zoom, `visibleRect(monitor)`) lives on the canvas. Still to do: removing the per-workspace Infinity algorithm, an explicit canvas z-order, clipping at the renderer level, a narrower damage under zoom, special workspaces (scratchpads stay outside the canvas) and the `hyprtester` scenarios.
 
 ## The model
 

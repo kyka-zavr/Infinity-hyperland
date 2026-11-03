@@ -6,7 +6,6 @@
 #include "../../config/ConfigValue.hpp"
 #include "../../output/Monitor.hpp"
 #include "../../managers/fullscreen/FullscreenController.hpp"
-#include "../../layout/algorithm/floating/infinity/InfinityCanvas.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -97,10 +96,7 @@ PHLWINDOW CWindowQuery::inDirection(const SWindowDirectionQuery& query) const {
 
         auto find = [&]() {
             for (auto const& w : m_state.windows()) {
-                // windows on the Infinity canvas are on screen on every monitor, even if their workspace is not active
-                const bool CANVAS = Layout::Floating::isCanvasWindow(w);
-
-                if (w == query.ignoreWindow || !w->m_workspace || !w->mapped() || (!Fullscreen::controller()->isFullscreen(w) && w->isFloating()) || (!w->m_workspace->visible() && !CANVAS))
+                if (w == query.ignoreWindow || !w->m_workspace || !w->mapped() || (!Fullscreen::controller()->isFullscreen(w) && w->isFloating()) || !w->m_workspace->visible())
                     continue;
 
                 if (w->isHidden())
@@ -109,7 +105,7 @@ PHLWINDOW CWindowQuery::inDirection(const SWindowDirectionQuery& query) const {
                 if (w->hasInputBlockedReasonsBesides(FOCUS_BLOCK_BELOW_FULLSCREEN))
                     continue;
 
-                if (query.workspace->m_monitor == w->m_monitor && query.workspace != w->m_workspace && !CANVAS)
+                if (query.workspace->m_monitor == w->m_monitor && query.workspace != w->m_workspace)
                     continue;
 
                 // Because we can't blanket ban finding window in direction if workspace has fullscreen, we need to only seek window if config options allow focus to wander away from FSed window
@@ -128,7 +124,7 @@ PHLWINDOW CWindowQuery::inDirection(const SWindowDirectionQuery& query) const {
                     !w->isAllowedOverFullscreen())
                     continue;
 
-                if (!*PMONITORFALLBACK && query.workspace->m_monitor != w->m_monitor && !CANVAS)
+                if (!*PMONITORFALLBACK && query.workspace->m_monitor != w->m_monitor)
                     continue;
 
                 if ((!Fullscreen::controller()->isFullscreen(w) && w->isFloating()) != floatingPreference)
@@ -139,7 +135,7 @@ PHLWINDOW CWindowQuery::inDirection(const SWindowDirectionQuery& query) const {
                 // on the same workspace before moving onto another.
                 const auto LEADER_IS_ON_SAME_WORKSPACE = leaderWindow && leaderWindow->m_workspace == query.workspace;
 
-                if (LEADER_IS_ON_SAME_WORKSPACE && w->m_workspace != query.workspace && !CANVAS)
+                if (LEADER_IS_ON_SAME_WORKSPACE && w->m_workspace != query.workspace)
                     continue;
 
                 const auto BWINDOWIDEALBB = w->getWindowIdealBoundingBoxIgnoreReserved();
@@ -224,19 +220,17 @@ PHLWINDOW CWindowQuery::inDirection(const SWindowDirectionQuery& query) const {
         constexpr float THRESHOLD    = 0.3 * M_PI;
 
         for (auto const& w : m_state.windows()) {
-            const bool CANVAS = Layout::Floating::isCanvasWindow(w);
-
             if (w == query.ignoreWindow || !w->mapped() || !w->m_workspace || !w->acceptsInput() || (!Fullscreen::controller()->isFullscreen(w) && !w->isFloating()) ||
-                (!w->m_workspace->visible() && !CANVAS))
+                !w->m_workspace->visible())
                 continue;
 
-            if (query.workspace->m_monitor == w->m_monitor && query.workspace != w->m_workspace && !CANVAS)
+            if (query.workspace->m_monitor == w->m_monitor && query.workspace != w->m_workspace)
                 continue;
 
             if (Fullscreen::controller()->hasFullscreen(query.workspace) && !w->isAllowedOverFullscreen())
                 continue;
 
-            if (!*PMONITORFALLBACK && query.workspace->m_monitor != w->m_monitor && !CANVAS)
+            if (!*PMONITORFALLBACK && query.workspace->m_monitor != w->m_monitor)
                 continue;
 
             const auto DIST  = w->middle().distance(query.origin.middle());
@@ -264,10 +258,7 @@ PHLWINDOW CWindowQuery::inDirection(const SWindowDirectionQuery& query) const {
 
 template <typename WINDOWPTR>
 static bool isWorkspaceMatches(WINDOWPTR pWindow, const WINDOWPTR w, bool anyWorkspace) {
-    if (!anyWorkspace)
-        return w->m_workspace == pWindow->m_workspace;
-
-    return w->m_workspace && (w->m_workspace->visible() || Layout::Floating::isCanvasWindow(w));
+    return anyWorkspace ? w->m_workspace && w->m_workspace->visible() : w->m_workspace == pWindow->m_workspace;
 }
 
 template <typename WINDOWPTR>

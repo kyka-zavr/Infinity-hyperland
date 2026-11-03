@@ -36,7 +36,6 @@
 #include "../notification/NotificationOverlay.hpp"
 #include "../switcher/WindowSwitcher.hpp"
 #include "../layout/LayoutManager.hpp"
-#include "../layout/algorithm/floating/infinity/InfinityCanvas.hpp"
 #include "../layout/space/Space.hpp"
 #include "../i18n/Engine.hpp"
 #include "../desktop/DesktopTypes.hpp"
@@ -237,10 +236,6 @@ WP<Render::GL::CHyprOpenGLImpl> IHyprRenderer::glBackend() {
 bool IHyprRenderer::shouldRenderWindow(PHLWINDOW pWindow, PHLMONITOR pMonitor) {
     if (!pWindow->presentation().visibleOnMonitor(pMonitor))
         return false;
-
-    // a window on the Infinity canvas is not part of a workspace: every monitor that sees it draws it
-    if (Layout::Floating::isCanvasWindow(pWindow))
-        return true;
 
     if (!pWindow->m_workspace)
         return false;
@@ -488,11 +483,6 @@ void IHyprRenderer::renderWorkspaceWindows(CRenderContext& ctx, PHLMONITOR pMoni
     PHLWINDOW  lastWindow;
     const bool SPECIAL = pWorkspace->type() == Workspace::eWorkspaceType::SPECIAL;
 
-    // canvas windows are drawn by every monitor, whatever workspace they came from: no workspace alpha or offset
-    const auto PRESENTATION = [](PHLWINDOW window, eSceneMode sceneMode) {
-        return Layout::Floating::isCanvasWindow(window) ? window->presentation().renderPresentationCanvas() : window->presentation().renderPresentation(sceneMode);
-    };
-
     Event::bus()->m_events.render.stage.emit({RENDER_PRE_WINDOWS, pMonitor, ctx});
 
     std::vector<PHLWINDOWREF> windows;
@@ -528,13 +518,13 @@ void IHyprRenderer::renderWorkspaceWindows(CRenderContext& ctx, PHLMONITOR pMoni
         }
 
         // render the bad boy
-        renderWindow(ctx, w.lock(), pMonitor, PRESENTATION(w.lock(), mode), time, true, RENDER_PASS_MAIN);
+        renderWindow(ctx, w.lock(), pMonitor, w->presentation().renderPresentation(mode), time, true, RENDER_PASS_MAIN);
         if (mode == eSceneMode::MONITOR)
             w.reset();
     }
 
     if (lastWindow)
-        renderWindow(ctx, lastWindow, pMonitor, PRESENTATION(lastWindow, mode), time, true, RENDER_PASS_MAIN);
+        renderWindow(ctx, lastWindow, pMonitor, lastWindow->presentation().renderPresentation(mode), time, true, RENDER_PASS_MAIN);
 
     lastWindow.reset();
 
@@ -555,7 +545,7 @@ void IHyprRenderer::renderWorkspaceWindows(CRenderContext& ctx, PHLMONITOR pMoni
             continue;
 
         // render the bad boy
-        renderWindow(ctx, w.lock(), pMonitor, PRESENTATION(w.lock(), mode), time, true, RENDER_PASS_POPUP);
+        renderWindow(ctx, w.lock(), pMonitor, w->presentation().renderPresentation(mode), time, true, RENDER_PASS_POPUP);
         w.reset();
     }
 
@@ -577,7 +567,7 @@ void IHyprRenderer::renderWorkspaceWindows(CRenderContext& ctx, PHLMONITOR pMoni
             continue; // special on another are rendered as a part of the base pass
 
         // render the bad boy
-        renderWindow(ctx, w.lock(), pMonitor, PRESENTATION(w.lock(), mode), time, true, RENDER_PASS_ALL);
+        renderWindow(ctx, w.lock(), pMonitor, w->presentation().renderPresentation(mode), time, true, RENDER_PASS_ALL);
     }
     renderFadeouts(ctx, pMonitor, Desktop::FADEOUT_PLANE_WINDOW_FLOATING, pWorkspace, mode);
 }

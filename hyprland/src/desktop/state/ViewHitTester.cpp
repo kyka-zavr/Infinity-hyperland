@@ -6,7 +6,6 @@
 #include "../view/window/Window.hpp"
 #include "../../config/ConfigValue.hpp"
 #include "../../layout/space/Space.hpp"
-#include "../../layout/algorithm/floating/infinity/InfinityCanvas.hpp"
 #include "../../macros.hpp"
 #include "../../protocols/LayerShell.hpp"
 #include "../../protocols/core/Compositor.hpp"
@@ -101,8 +100,7 @@ PHLWINDOW CViewHitTester::windowAtInternal(const Vector2D& pos, uint16_t propert
                         continue;
                 }
 
-                // a window on the Infinity canvas is on screen on every monitor that sees it, whatever workspace it came from
-                const bool ON_WORKSPACE = workspace ? w->m_workspace == workspace : (w->m_workspace->visible() || Layout::Floating::isCanvasWindow(w));
+                const bool ON_WORKSPACE = workspace ? w->m_workspace == workspace : w->m_workspace->visible();
                 if (w->isFloating() && w->mapped() && ON_WORKSPACE && w->acceptsInput() && !(w->m_state & WINDOW_STATE_PINNED) &&
                     !w->m_ruleApplicator->noFocus().valueOrDefault() && w != ignoreWindow && (!aboveFullscreen || w->isAllowedOverFullscreen()) && !isShadowedByModal(w)) {
                     // OR windows should add focus to parent
