@@ -32,6 +32,10 @@ bool Floating::isCanvasWindow(PHLWINDOW window) {
     return ALGORITHM && ALGORITHM->infinityActive();
 }
 
+bool Floating::isCanvasWindow(PHLWINDOWREF window) {
+    return isCanvasWindow(window.lock());
+}
+
 bool CInfinityCanvas::enabled() const {
     return m_enabled;
 }

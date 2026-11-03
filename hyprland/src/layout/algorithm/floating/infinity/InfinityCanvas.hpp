@@ -9,6 +9,7 @@
 namespace Layout::Floating {
     // true when the window lives in a workspace that is in Infinity mode: such windows are on the canvas, not in a workspace
     bool isCanvasWindow(PHLWINDOW window);
+    bool isCanvasWindow(PHLWINDOWREF window);
 
     // The Infinity mode belongs to the session, not to a workspace: it is applied to every workspace of every monitor,
     // including the ones that are created or shown later. This is the first step of the canvas of release 3
