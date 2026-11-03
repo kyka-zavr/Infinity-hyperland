@@ -365,6 +365,9 @@ bool CKeybindManager::onAxisEvent(const IPointer::SAxisEvent& event, SP<IPointer
         },
         nullptr);
 
+    if (!RESULT.passEvent)
+        shadowBinds();
+
     return RESULT.passEvent;
 }
 
@@ -531,7 +534,7 @@ SBindResult CKeybindManager::processEvent(const SBindEventContext& context, cons
             suppressSubChords(bind, context);
         }
 
-        if (context.pressed && (bind->hasFlag(BIND_FLAG_NON_CONSUMING) || bind->hasFlag(BIND_FLAG_RELEASE) || bind->hasFlag(BIND_FLAG_AUTO_CONSUMING)))
+        if (context.pressed && (bind->hasFlag(BIND_FLAG_NON_CONSUMING) || bind->hasFlag(BIND_FLAG_AUTO_CONSUMING)))
             continue;
 
         claimed = true;
@@ -795,6 +798,9 @@ void CKeybindManager::shadowBinds(const std::optional<SResolvedKey>& excluded, c
         const bool MATCH_RELEASE = bind->hasFlag(BIND_FLAG_RELEASE) && bind->chordSize() <= 1;
 
         for (const auto& input : m_inputState.pressed()) {
+            if (input.key.event)
+                continue;
+
             const auto device = input.device.lock();
             if (!device)
                 continue;
