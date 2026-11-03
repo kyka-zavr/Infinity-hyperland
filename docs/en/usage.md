@@ -4,7 +4,7 @@
 
 ## Two modes
 
-Every workspace is in one of two modes, and the mode is switched on all monitors at once:
+Every workspace is in one of two modes. The mode belongs to the session: switching it applies to every workspace of every monitor, including workspaces created later.
 
 - **Tiling**: the usual Hyprland layout (dwindle, master, scrolling, monocle).
 - **Infinity**: windows are free boxes on one unbounded plane. The screen is a view over that plane. You pan and zoom the plane; there are no borders and no "home" button (a lost window is found with the window switcher).

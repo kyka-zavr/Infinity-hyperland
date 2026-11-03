@@ -2,7 +2,7 @@
 
 [English](design-canvas.md) | [Русский](../ru/design-canvas.md)
 
-Status: planned for release 3 (a big release: bug fixes and a rework). Nothing here is implemented yet.
+Status: in progress (release 3). Done: the mode is one for the session — `InfinityCanvas` (a new file) turns it on and off on every workspace of every monitor and on the workspaces that appear later, so switching a workspace or opening a window on the second monitor no longer drops out of the mode. Next: one canvas object with its own coordinates, monitors as viewports, clipping, and the pan/zoom limits.
 
 ## Problems seen in real use
 

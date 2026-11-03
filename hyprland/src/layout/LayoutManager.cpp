@@ -4,6 +4,7 @@
 #include "../managers/fullscreen/FullscreenController.hpp"
 #include "space/Space.hpp"
 #include "algorithm/Algorithm.hpp"
+#include "algorithm/floating/infinity/InfinityCanvas.hpp"
 #include "algorithm/floating/infinity/InfinityFloatingAlgorithm.hpp"
 #include "target/Target.hpp"
 #include "../managers/input/InputManager.hpp"
@@ -134,6 +135,17 @@ Config::ErrorResult CLayoutManager::infinityMsg(const std::string_view& sv, PHLW
     const auto FIRST = sv.find_first_not_of(' ', sizeof("infinity") - 1);
     auto       arg   = std::string{FIRST == std::string_view::npos ? std::string_view{} : sv.substr(FIRST)};
 
+    // the mode belongs to the session: turning it on or off applies to every workspace of every monitor, now and later
+    if (arg == "toggle") {
+        Floating::canvas()->toggle();
+        return {};
+    }
+
+    if (arg == "on" || arg == "off") {
+        Floating::canvas()->setEnabled(arg == "on");
+        return {};
+    }
+
     // debugging aid: report what the pointer is over, using the same mapping and hit test as real mouse input
     if (arg == "probe") {
         const auto SCREEN = g_pInputManager->getMouseCoordsInternal();
@@ -152,10 +164,6 @@ Config::ErrorResult CLayoutManager::infinityMsg(const std::string_view& sv, PHLW
         const auto LOCAL  = MON ? SCREEN - MON->m_position : SCREEN;
         arg               = std::format("{} {} {}", arg.substr(0, arg.size() - sizeof(" cursor") + 1), LOCAL.x, LOCAL.y);
     }
-
-    // the mode follows the focused workspace and is applied to the active workspace of every monitor
-    if (arg == "toggle")
-        arg = focused->space()->algorithm()->infinityActive() ? "off" : "on";
 
     const auto MSG = std::format("infinity {}", arg);
 
