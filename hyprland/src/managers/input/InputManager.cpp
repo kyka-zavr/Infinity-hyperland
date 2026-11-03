@@ -2418,6 +2418,11 @@ Vector2D CInputManager::planeCoords(const Vector2D& screen, PHLMONITOR monitor) 
     if (ZOOM == 1.F)
         return screen;
 
+    // overlay windows (the settings window) are drawn above the plane without the zoom: over one of them the screen point is
+    // already the plane point
+    if (g_layoutManager->infinityOverlayAt(screen))
+        return screen;
+
     // the renderer scales the plane about the origin of the whole layout (not of each monitor), so monitors show neighbouring parts of one plane
     return screen / ZOOM;
 }

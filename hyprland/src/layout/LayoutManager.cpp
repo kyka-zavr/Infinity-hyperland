@@ -4,6 +4,7 @@
 #include "../managers/fullscreen/FullscreenController.hpp"
 #include "space/Space.hpp"
 #include "algorithm/Algorithm.hpp"
+#include "algorithm/floating/infinity/InfinityFloatingAlgorithm.hpp"
 #include "target/Target.hpp"
 #include "../managers/input/InputManager.hpp"
 #include "../keybinds/Manager.hpp"
@@ -16,6 +17,8 @@
 #include "../state/MonitorState.hpp"
 #include "../desktop/state/FocusState.hpp"
 #include "../desktop/state/ViewState.hpp"
+#include "../desktop/state/WindowState.hpp"
+#include "../desktop/view/window/Window.hpp"
 #include "../desktop/view/Group.hpp"
 #include "../desktop/view/window/WindowGroupMembership.hpp"
 #include "../event/EventBus.hpp"
@@ -100,6 +103,31 @@ bool CLayoutManager::panInfinityEverywhere(const Vector2D& Δ) {
     }
 
     return panned;
+}
+
+// screen-space delta: the plane under a zoom of z moves by delta / z for the content to follow the pointer 1:1
+bool CLayoutManager::panInfinityPlane(const Vector2D& Δ) {
+    return panInfinityEverywhere(Δ);
+}
+
+bool CLayoutManager::infinityOverlayAt(const Vector2D& screen) const {
+    for (const auto& w : Desktop::windowState()->windows()) {
+        if (!w || !w->mapped() || !w->isFloating() || !(w->m_state & Desktop::View::WINDOW_STATE_PINNED))
+            continue;
+
+        if (!Floating::isOverlayWindow(w))
+            continue;
+
+        const auto WS = w->m_workspace;
+        if (!WS || !WS->space() || !WS->space()->algorithm() || !WS->space()->algorithm()->infinityActive())
+            continue;
+
+        // overlay windows are drawn without the zoom: their layout box is their box on the screen
+        if (w->layoutBox().containsPoint(screen))
+            return true;
+    }
+
+    return false;
 }
 
 Config::ErrorResult CLayoutManager::infinityMsg(const std::string_view& sv, PHLWORKSPACE focused) {
@@ -194,6 +222,10 @@ void CLayoutManager::centerInfinityOn(PHLWINDOW window) {
     const auto ALGO    = window->m_workspace->space()->algorithm();
     const auto MONITOR = window->m_workspace->m_monitor.lock();
     if (!ALGO->infinityActive() || !MONITOR)
+        return;
+
+    // overlay windows are pinned to the monitor and do not move with the plane
+    if ((window->m_state & Desktop::View::WINDOW_STATE_PINNED) && Floating::isOverlayWindow(window))
         return;
 
     // on screen a plane point p (layout coordinates) is at p * zoom, so the shift that puts the window center in the monitor middle is:

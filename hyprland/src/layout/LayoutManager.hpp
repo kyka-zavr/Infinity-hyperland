@@ -88,6 +88,13 @@ namespace Layout {
         // Infinity: pan the shared plane so that the window's center ends up in the middle of its monitor (no-op outside Infinity)
         void                    centerInfinityOn(PHLWINDOW window);
 
+        // Infinity: move the plane by a screen-space delta (the content follows the delta). False when no workspace is in Infinity.
+        bool                    panInfinityPlane(const Vector2D& Δ);
+
+        // Infinity: true when the point is over an overlay window (pinned, drawn unscaled above the plane), so it is a screen
+        // point rather than a point on the plane
+        bool                    infinityOverlayAt(const Vector2D& screen) const;
+
         // Infinity: raw pointer motion with the pan modifiers held moves the plane instead of the cursor (so it never runs into a monitor edge).
         // delta is in screen pixels; returns true when the motion was consumed.
         bool                    panWithMouse(const Vector2D& delta);

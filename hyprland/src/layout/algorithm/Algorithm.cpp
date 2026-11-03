@@ -8,6 +8,7 @@
 #include "../space/Space.hpp"
 #include "../../desktop/view/window/Window.hpp"
 #include "../../desktop/history/WindowHistoryTracker.hpp"
+#include "../../config/shared/actions/ConfigActions.hpp"
 #include "../../desktop/state/FocusState.hpp"
 #include "../../output/Monitor.hpp"
 #include "../../render/Renderer.hpp"
@@ -125,12 +126,15 @@ bool CAlgorithm::infinityActive() const {
     return dynamic_cast<Floating::CInfinityFloatingAlgorithm*>(m_floating.get());
 }
 
-// replaces the floating algorithm without letting the new one move already placed windows
-void CAlgorithm::swapFloatingAlgo(UP<IFloatingAlgorithm>&& algo) {
+// replaces the floating algorithm without letting the new one move already placed windows; preservePlaced = false when the
+// new algorithm places them itself
+void CAlgorithm::swapFloatingAlgo(UP<IFloatingAlgorithm>&& algo, bool preservePlaced) {
     std::vector<std::pair<SP<ITarget>, CBox>> placed;
-    for (const auto& t : m_floatingTargets) {
-        if (const auto TARGET = t.lock(); TARGET)
-            placed.emplace_back(TARGET, TARGET->position());
+    if (preservePlaced) {
+        for (const auto& t : m_floatingTargets) {
+            if (const auto TARGET = t.lock(); TARGET)
+                placed.emplace_back(TARGET, TARGET->position());
+        }
     }
 
     updateFloatingAlgo(std::move(algo));
@@ -162,6 +166,20 @@ void CAlgorithm::setInfinity(bool on) {
             tiled.emplace_back(TARGET, BOX);
         }
 
+        std::vector<SP<ITarget>> all;
+        all.reserve(m_tiledTargets.size() + m_floatingTargets.size());
+        for (const auto& t : m_tiledTargets) {
+            if (const auto TARGET = t.lock(); TARGET)
+                all.emplace_back(TARGET);
+        }
+        for (const auto& t : m_floatingTargets) {
+            if (const auto TARGET = t.lock(); TARGET)
+                all.emplace_back(TARGET);
+        }
+
+        // windows that were on the canvas before the last exit bring the plane back to the view they were left at
+        Floating::CInfinityFloatingAlgorithm::prepareCanvas(all);
+
         auto  algo = makeUnique<Floating::CInfinityFloatingAlgorithm>();
         auto* raw  = algo.get();
 
@@ -170,13 +188,19 @@ void CAlgorithm::setInfinity(bool on) {
                 raw->rememberFloatingBefore(TARGET);
         }
 
-        swapFloatingAlgo(std::move(algo));
+        // the Infinity algorithm places the windows itself: it keeps their places or restores the ones from the last time
+        swapFloatingAlgo(std::move(algo), false);
 
         // tiled windows stay exactly where they are, they just become free
         for (const auto& [target, box] : tiled) {
             setFloating(target, true);
-            target->setPositionGlobal(box);
-            target->warpPositionSize();
+
+            // a window that was on the canvas before the last exit goes back to its place and size
+            if (!raw->restoreCanvasBox(target)) {
+                target->setPositionGlobal(box);
+                target->warpPositionSize();
+            }
+
             raw->adopt(target);
         }
 
@@ -184,6 +208,7 @@ void CAlgorithm::setInfinity(bool on) {
     }
 
     auto* infinity = dynamic_cast<Floating::CInfinityFloatingAlgorithm*>(m_floating.get());
+    infinity->storeCanvasBoxes();
     infinity->resetView();
 
     std::vector<SP<ITarget>> toTile;
@@ -204,6 +229,14 @@ void CAlgorithm::setInfinity(bool on) {
         g_pHyprRenderer->damageWindow(target->window());
     }
     m_leavingInfinity = false;
+
+    // overlay windows (the settings window) are ordinary windows again outside the mode
+    for (const auto& t : m_floatingTargets) {
+        const auto TARGET = t.lock();
+        const auto WINDOW = TARGET ? TARGET->window() : nullptr;
+        if (Floating::isOverlayWindow(WINDOW) && (WINDOW->m_state & Desktop::View::WINDOW_STATE_PINNED))
+            Config::Actions::pinWindow(Config::Actions::TOGGLE_ACTION_DISABLE, WINDOW);
+    }
 
     swapFloatingAlgo(makeUnique<Floating::CDefaultFloatingAlgorithm>());
 }

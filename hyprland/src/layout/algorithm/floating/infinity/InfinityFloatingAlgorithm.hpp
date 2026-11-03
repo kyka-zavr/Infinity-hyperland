@@ -9,6 +9,10 @@
 #include <vector>
 
 namespace Layout::Floating {
+    // Windows whose app id is listed in `infinity:overlay_classes` are not part of the plane in Infinity mode: they are pinned
+    // to the monitor, drawn unscaled above the plane and kept in its middle (the settings window). Empty option: no overlays.
+    bool isOverlayWindow(PHLWINDOW window);
+
     // Infinity mode: windows are free-floating boxes on an unbounded plane.
     // Every target has a "world" box; what is on screen is the world box moved by the view offset:
     //     screen = world - view
@@ -51,13 +55,25 @@ namespace Layout::Floating {
         void rememberFloatingBefore(SP<ITarget> target);
         bool wasFloatingBefore(SP<ITarget> target) const;
 
+        // canvas geometry of the windows, kept when the mode is left: entering it again returns them where they were
+        void storeCanvasBoxes() const;
+        bool restoreCanvasBox(SP<ITarget> target);
+
+        // call before the mode is entered: restores the saved view when these windows were on the canvas before
+        static bool prepareCanvas(const std::vector<SP<ITarget>>& targets);
+
         Vector2D view() const;
         float    zoom() const;
 
       private:
         void remember(SP<ITarget> target);
         void applyView();
+        void centerNewTarget(SP<ITarget> target);
         void damageMonitor() const;
+
+        // overlay windows: pin to the monitor, put in the middle and keep there
+        void centerOverlay(SP<ITarget> target);
+        bool arrangeOverlay(SP<ITarget> target);
 
         // the view the targets of this algorithm are placed for
         Vector2D                           m_applied;

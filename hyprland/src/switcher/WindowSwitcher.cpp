@@ -24,6 +24,7 @@
 #include <hyprgraphics/image/Image.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <ranges>
 
 using namespace Switcher;
@@ -35,13 +36,23 @@ static constexpr float GAP    = 12.F;
 static constexpr float PAD    = 20.F;
 static constexpr float SELPAD = 3.F;
 
+// animations, milliseconds
+static constexpr float OPEN_MS  = 150.F;
+static constexpr float CLOSE_MS = 110.F;
+
+// 0 at the start, 1 at the end of the opening or closing animation
+static float animationProgress(const std::chrono::steady_clock::time_point& start, float durationMs, bool backwards) {
+    const float T = std::clamp(std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - start).count() / durationMs, 0.F, 1.F);
+    return backwards ? 1.F - T : T;
+}
+
 UP<CWindowSwitcher>& Switcher::switcher() {
     static UP<CWindowSwitcher> p = makeUnique<CWindowSwitcher>();
     return p;
 }
 
 bool CWindowSwitcher::active() const {
-    return !m_entries.empty();
+    return !m_entries.empty() && !m_closing;
 }
 
 std::string CWindowSwitcher::trigger(bool backwards) {
@@ -49,6 +60,11 @@ std::string CWindowSwitcher::trigger(bool backwards) {
         step(backwards);
         return {};
     }
+
+    // a new press while the panel is fading out starts a fresh one
+    m_entries.clear();
+    m_layouts.clear();
+    m_closing = false;
 
     const auto CURRENT = Desktop::focusState()->window();
 
@@ -76,6 +92,16 @@ std::string CWindowSwitcher::trigger(bool backwards) {
     m_selected = backwards ? m_entries.size() - 1 : 1;
     m_openPos  = g_pInputManager->getMouseCoordsInternal();
 
+    // the panel belongs to the monitor the pointer is on
+    m_monitor = State::monitorState()->query().vec(m_openPos).run();
+    if (!m_monitor)
+        m_monitor = Desktop::focusState()->monitor();
+
+    m_openTime     = std::chrono::steady_clock::now();
+    m_animLast     = m_openTime;
+    m_selAnimValid = false;
+    m_layouts.clear();
+
     // releasing one of the modifiers that were held when the switcher opened confirms the choice (Shift only changes direction)
     m_holdMods = sc<uint32_t>(g_pInputManager->getModsFromAllKBs()) & (sc<uint32_t>(Input::HL_MODIFIER_ALT) | sc<uint32_t>(Input::HL_MODIFIER_CTRL) | sc<uint32_t>(Input::HL_MODIFIER_META));
 
@@ -99,11 +125,26 @@ void CWindowSwitcher::redraw() {
     }
 }
 
+// closing is animated: the panel fades out and then finish() clears it
 void CWindowSwitcher::close() {
+    if (m_entries.empty())
+        return;
+
+    m_closing   = true;
+    m_closeTime = std::chrono::steady_clock::now();
+    m_holdMods  = 0;
+
+    redraw();
+}
+
+void CWindowSwitcher::finish() {
     m_entries.clear();
     m_layouts.clear();
-    m_selected = 0;
-    m_holdMods = 0;
+    m_monitor.reset();
+    m_selected     = 0;
+    m_holdMods     = 0;
+    m_closing      = false;
+    m_selAnimValid = false;
 
     redraw();
 }
@@ -183,9 +224,13 @@ void CWindowSwitcher::commit() {
     if (!TARGET || TARGET == CURRENT || !validMapped(TARGET))
         return;
 
-    // in Infinity the plane is first moved so the window lands in the middle of its monitor, otherwise the workspace is switched as for focuswindow
-    g_layoutManager->centerInfinityOn(TARGET);
+    // focusing first switches the workspace and the monitor the window lives on (so a window on another workspace is shown);
+    // the switch focuses the workspace's own last window, so the chosen one is focused (and raised) explicitly
     Config::Actions::focus(TARGET);
+    Desktop::focusState()->fullWindowFocus(TARGET, Desktop::FOCUS_REASON_DISPATCH_FOCUSWINDOW, nullptr, false);
+
+    // then the plane is moved so that the window lands in the middle of its monitor
+    g_layoutManager->centerInfinityOn(TARGET);
 }
 
 bool CWindowSwitcher::onKey(xkb_keysym_t sym, bool pressed) {
@@ -254,16 +299,42 @@ void CWindowSwitcher::updateText(SText& t, const std::string& text, int pt, int 
 }
 
 void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
-    if (!active())
+    if (m_entries.empty())
         return;
 
-    // windows may have closed while the switcher was open
-    std::erase_if(m_entries, [](const SEntry& e) { return !e.window.lock() || !validMapped(e.window.lock()); });
+    // windows may have closed while the switcher was open: keep the selection on the same window
+    if (std::ranges::any_of(m_entries, [](const SEntry& e) { return !e.window.lock() || !validMapped(e.window.lock()); })) {
+        const auto SELECTED = m_selected < m_entries.size() ? m_entries[m_selected].window : PHLWINDOWREF{};
+
+        std::erase_if(m_entries, [](const SEntry& e) { return !e.window.lock() || !validMapped(e.window.lock()); });
+
+        const auto IT       = std::ranges::find_if(m_entries, [&](const SEntry& e) { return e.window.lock() == SELECTED.lock(); });
+        m_selected          = IT == m_entries.end() ? std::min(m_selected, m_entries.empty() ? 0 : m_entries.size() - 1) : sc<size_t>(IT - m_entries.begin());
+    }
+
     if (m_entries.size() < 2) {
-        close();
+        finish();
         return;
     }
-    m_selected = std::min(m_selected, m_entries.size() - 1);
+
+    // only the monitor the pointer was on when the switcher opened shows the panel
+    if (!m_monitor) {
+        finish();
+        return;
+    }
+    if (m_monitor != monitor)
+        return;
+
+    // the fade-out has run its course
+    if (m_closing && std::chrono::steady_clock::now() - m_closeTime >= std::chrono::milliseconds(sc<int>(CLOSE_MS))) {
+        finish();
+        return;
+    }
+
+    const float PROGRESS = m_closing ? animationProgress(m_closeTime, CLOSE_MS, true) : animationProgress(m_openTime, OPEN_MS, false);
+    const float EASE     = 1.F - std::pow(1.F - PROGRESS, 3.F);
+    const float ALPHA    = m_closing ? PROGRESS : EASE;
+    const float SCALEF   = 0.96F + 0.04F * EASE;
 
     auto& layout = m_layouts[monitor.get()];
     layout       = {};
@@ -299,15 +370,58 @@ void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
     const float  PANELX = std::round((MONSIZE.x - PANELW) / 2.F);
     const float  PANELY = std::round((MONSIZE.y - PANELH) / 2.F);
 
-    // in layout coordinates, for the mouse
-    const auto TOLAYOUT = [&](float px, float py, float pw, float ph) { return CBox{monitor->m_position.x + px / SCALE, monitor->m_position.y + py / SCALE, pw / SCALE, ph / SCALE}; };
-    layout.panel        = TOLAYOUT(PANELX, PANELY, PANELW, PANELH);
+    // the panel grows a little while it opens and shrinks while it closes; every box goes through this
+    const Vector2D CENTER = {PANELX + PANELW / 2.F, PANELY + PANELH / 2.F};
+    const auto     SCALEBOX = [&](CBox box) {
+        if (SCALEF == 1.F)
+            return box;
+
+        box.x = CENTER.x + (box.x - CENTER.x) * SCALEF;
+        box.y = CENTER.y + (box.y - CENTER.y) * SCALEF;
+        box.w *= SCALEF;
+        box.h *= SCALEF;
+
+        return box;
+    };
+    const auto WITHALPHA = [&](const CHyprColor& color) { return color.modifyA(color.a * ALPHA); };
+
+    // in layout coordinates, for the mouse (the boxes that are really drawn)
+    const auto TOLAYOUT = [&](const CBox& box) { return CBox{monitor->m_position.x + box.x / SCALE, monitor->m_position.y + box.y / SCALE, box.w / SCALE, box.h / SCALE}; };
+    layout.panel        = TOLAYOUT(SCALEBOX(CBox{PANELX, PANELY, PANELW, PANELH}));
 
     CRectPassElement::SRectData panel;
-    panel.box   = {PANELX, PANELY, PANELW, PANELH};
-    panel.color = CHyprColor(*PCPANEL);
-    panel.round = sc<int>(16.F * SCALE);
+    panel.box   = SCALEBOX(CBox{PANELX, PANELY, PANELW, PANELH});
+    panel.color = WITHALPHA(CHyprColor(*PCPANEL));
+    panel.round = sc<int>(16.F * SCALE * SCALEF);
     ctx.m_pass.add(makeUnique<CRectPassElement>(panel));
+
+    // the selection slides between tiles instead of jumping
+    const float TO_COL = sc<float>(m_selected % COLS);
+    const float TO_ROW = sc<float>(m_selected / COLS);
+    if (!m_selAnimValid) {
+        m_selCol       = TO_COL;
+        m_selRow       = TO_ROW;
+        m_selAnimValid = true;
+    }
+    const auto  NOW = std::chrono::steady_clock::now();
+    const float DT  = std::clamp(std::chrono::duration<float>(NOW - m_animLast).count(), 0.F, 0.1F);
+    m_animLast      = NOW;
+    const float K   = 1.F - std::exp(-DT * 22.F);
+    m_selCol += (TO_COL - m_selCol) * K;
+    m_selRow += (TO_ROW - m_selRow) * K;
+    if (std::abs(TO_COL - m_selCol) < 0.002F)
+        m_selCol = TO_COL;
+    if (std::abs(TO_ROW - m_selRow) < 0.002F)
+        m_selRow = TO_ROW;
+
+    const float SELX = PANELX + P + m_selCol * (TW + G);
+    const float SELY = PANELY + P + m_selRow * (TH + G);
+
+    CRectPassElement::SRectData sel;
+    sel.box   = SCALEBOX(CBox{SELX - SELPAD * SCALE, SELY - SELPAD * SCALE, TW + 2 * SELPAD * SCALE, TH + 2 * SELPAD * SCALE});
+    sel.color = WITHALPHA(CHyprColor(*PCACCENT));
+    sel.round = sc<int>(12.F * SCALE * SCALEF);
+    ctx.m_pass.add(makeUnique<CRectPassElement>(sel));
 
     for (size_t i = 0; i < N; ++i) {
         auto&       e = m_entries[i];
@@ -316,20 +430,13 @@ void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
         const float x = PANELX + P + (i % COLS) * (TW + G);
         const float y = PANELY + P + (i / COLS) * (TH + G);
 
-        layout.tiles.emplace_back(TOLAYOUT(x, y, TW, TH), i);
-
-        if (i == m_selected) {
-            CRectPassElement::SRectData sel;
-            sel.box   = {x - SELPAD * SCALE, y - SELPAD * SCALE, TW + 2 * SELPAD * SCALE, TH + 2 * SELPAD * SCALE};
-            sel.color = CHyprColor(*PCACCENT);
-            sel.round = sc<int>(12.F * SCALE);
-            ctx.m_pass.add(makeUnique<CRectPassElement>(sel));
-        }
+        const CBox TILE = SCALEBOX(CBox{x, y, TW, TH});
+        layout.tiles.emplace_back(TOLAYOUT(TILE), i);
 
         CRectPassElement::SRectData tile;
-        tile.box   = {x, y, TW, TH};
-        tile.color = CHyprColor(i == m_selected ? *PCTILES : *PCTILE);
-        tile.round = sc<int>(10.F * SCALE);
+        tile.box   = TILE;
+        tile.color = WITHALPHA(CHyprColor(i == m_selected ? *PCTILES : *PCTILE));
+        tile.round = sc<int>(10.F * SCALE * SCALEF);
         ctx.m_pass.add(makeUnique<CRectPassElement>(tile));
 
         // icon
@@ -346,8 +453,8 @@ void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
         if (e.icon) {
             CTexPassElement::SRenderData icon;
             icon.tex = e.icon;
-            icon.box = {x + INSET, y + std::round((HEADERH - ICONSZ) / 2.F), ICONSZ, ICONSZ};
-            icon.a   = 1.F;
+            icon.box = SCALEBOX(CBox{x + INSET, y + std::round((HEADERH - ICONSZ) / 2.F), ICONSZ, ICONSZ});
+            icon.a   = ALPHA;
             ctx.m_pass.add(makeUnique<CTexPassElement>(std::move(icon)));
             textX += ICONSZ + 8.F * SCALE;
         }
@@ -358,17 +465,17 @@ void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
         if (name.tex) {
             CTexPassElement::SRenderData t;
             t.tex = name.tex;
-            t.box = {textX, y + std::round((HEADERH - name.size.y) / 2.F), std::min<double>(name.size.x, x + TW - INSET - textX), name.size.y};
-            t.a   = 1.F;
+            t.box = SCALEBOX(CBox{textX, y + std::round((HEADERH - name.size.y) / 2.F), std::min<double>(name.size.x, x + TW - INSET - textX), name.size.y});
+            t.a   = ALPHA;
             ctx.m_pass.add(makeUnique<CTexPassElement>(std::move(t)));
         }
 
         // live preview: the window's own surface texture, fitted into the area under the header
-        const CBox AREA = {x + INSET, y + HEADERH, TW - 2 * INSET, TH - HEADERH - FOOTERH};
+        const CBox AREA = SCALEBOX(CBox{x + INSET, y + HEADERH, TW - 2 * INSET, TH - HEADERH - FOOTERH});
 
         CRectPassElement::SRectData well;
         well.box   = AREA;
-        well.color = CHyprColor(*PCWELL);
+        well.color = WITHALPHA(CHyprColor(*PCWELL));
         well.round = sc<int>(6.F * SCALE);
         ctx.m_pass.add(makeUnique<CRectPassElement>(well));
 
@@ -382,7 +489,7 @@ void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
             CTexPassElement::SRenderData pv;
             pv.tex   = PREVIEW;
             pv.box   = {AREA.x + std::round((AREA.w - PW) / 2.0), AREA.y + std::round((AREA.h - PH) / 2.0), PW, PH};
-            pv.a     = 1.F;
+            pv.a     = ALPHA;
             pv.round = sc<int>(4.F * SCALE);
             ctx.m_pass.add(makeUnique<CTexPassElement>(std::move(pv)));
         } else if (e.icon) {
@@ -392,7 +499,7 @@ void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
             CTexPassElement::SRenderData icon;
             icon.tex = e.icon;
             icon.box = {AREA.x + std::round((AREA.w - BIG) / 2.F), AREA.y + std::round((AREA.h - BIG) / 2.F), BIG, BIG};
-            icon.a   = 0.8F;
+            icon.a   = 0.8F * ALPHA;
             ctx.m_pass.add(makeUnique<CTexPassElement>(std::move(icon)));
         }
 
@@ -402,14 +509,15 @@ void CWindowSwitcher::draw(Render::CRenderContext& ctx, PHLMONITOR monitor) {
         if (title.tex) {
             CTexPassElement::SRenderData t;
             t.tex = title.tex;
-            t.box = {x + INSET, y + TH - FOOTERH + std::round((FOOTERH - title.size.y) / 2.F), std::min<double>(title.size.x, TW - 2 * INSET), title.size.y};
-            t.a   = 1.F;
+            t.box = SCALEBOX(CBox{x + INSET, y + TH - FOOTERH + std::round((FOOTERH - title.size.y) / 2.F), std::min<double>(title.size.x, TW - 2 * INSET), title.size.y});
+            t.a   = ALPHA;
             ctx.m_pass.add(makeUnique<CTexPassElement>(std::move(t)));
         }
     }
 
     // previews are live: keep this part of the screen coming while the switcher is open
-    const CBox DAMAGE = {monitor->m_position.x + PANELX / SCALE - 4, monitor->m_position.y + PANELY / SCALE - 4, PANELW / SCALE + 8, PANELH / SCALE + 8};
+    const CBox PANELBOX = layout.panel;
+    const CBox DAMAGE   = {PANELBOX.x - 8, PANELBOX.y - 8, PANELBOX.w + 16, PANELBOX.h + 16};
     g_pHyprRenderer->damageBox(DAMAGE);
     monitor->scheduleFrame();
 }

@@ -6,6 +6,7 @@
 #include "../LayoutManager.hpp"
 #include "../space/Space.hpp"
 #include "../algorithm/Algorithm.hpp"
+#include "../algorithm/floating/infinity/InfinityFloatingAlgorithm.hpp"
 #include "../target/WindowTarget.hpp"
 
 #include "../../Compositor.hpp"
@@ -18,9 +19,12 @@
 #include "../../desktop/view/Group.hpp"
 #include "../../render/Renderer.hpp"
 #include "../../state/MonitorState.hpp"
+#include "../../managers/eventLoop/EventLoopManager.hpp"
+#include "../../managers/eventLoop/EventLoopTimer.hpp"
 
 #include <hyprutils/utils/ScopeGuard.hpp>
 #include <string_view>
+#include <chrono>
 
 using namespace Layout;
 using namespace Layout::Supplementary;
@@ -32,6 +36,11 @@ static float planeZoomFor(SP<ITarget> target) {
 
     return target->space()->algorithm()->infinityZoom();
 }
+
+// edge panning while dragging in Infinity: the zone at the monitor border that starts it, and the speed at the border and at its inner edge
+static constexpr float EDGE_PAN_ZONE = 22.F;
+static constexpr float EDGE_PAN_MAX  = 1200.F;
+static constexpr float EDGE_PAN_MIN  = 220.F;
 
 static bool isResizeMode(eMouseBindMode mode) {
     return mode == MBIND_RESIZE || mode == MBIND_RESIZE_FORCE_RATIO || mode == MBIND_RESIZE_BLOCK_RATIO;
@@ -167,6 +176,12 @@ bool CDragStateController::updateDragWindow() {
 }
 
 void CDragStateController::dragBegin(SP<ITarget> target, eMouseBindMode mode, std::optional<eRectCorner> forcedEdge, bool exclusiveDeviceGrab) {
+    // an overlay window (the settings window in Infinity) is pinned to the middle of its monitor: it cannot be dragged or resized
+    if (const auto WINDOW = target ? target->window() : nullptr;
+        Floating::isOverlayWindow(WINDOW) && (WINDOW->m_state & Desktop::View::WINDOW_STATE_PINNED) && target->space() && target->space()->algorithm() &&
+        target->space()->algorithm()->infinityActive())
+        return;
+
     m_target              = target;
     m_dragMode            = mode;
     m_draggingTiled       = false;
@@ -179,6 +194,7 @@ void CDragStateController::dragBegin(SP<ITarget> target, eMouseBindMode mode, st
 
     m_mouseMoveEventCount = 1;
     m_beginDragSizeXY     = Vector2D();
+    m_edgePanLast         = {};
 
     // Window will be floating. Let's check if it's valid. It should be, but I don't like crashing.
     if (!validMapped(DRAGGINGTARGET->window())) {
@@ -339,6 +355,10 @@ bool CDragStateController::dragEnd() {
     if (isResizeMode(m_dragMode))
         setClientResizingState(draggingTarget, false);
 
+    if (m_edgePanTimer)
+        m_edgePanTimer->updateTimeout(std::nullopt);
+    m_edgePanLast = {};
+
     m_dragMode            = MBIND_INVALID;
     m_exclusiveDeviceGrab = false;
     m_draggingTiled       = false;
@@ -368,6 +388,8 @@ void CDragStateController::mouseMove(const Vector2D& mousePos) {
             return;
         m_events.motion.emit();
     }
+
+    updateEdgePan();
 
     static auto TIMER = std::chrono::high_resolution_clock::now(), MSTIMER = TIMER;
 
@@ -507,4 +529,99 @@ void CDragStateController::mouseMove(const Vector2D& mousePos) {
 
     DRAGGINGTARGET->damageEntire();
     m_events.motion.emit();
+}
+
+// Infinity: the pointer cannot leave the monitors, so a window dragged to the border would stop there. While the pointer is
+// in the border zone the plane slides under it and the dragged window is put back under the pointer: the canvas keeps moving
+// and there is no border the window can run into.
+std::optional<Vector2D> CDragStateController::edgePanVelocity() const {
+    const auto TARGET = m_target.lock();
+    if (!TARGET || m_dragMode != MBIND_MOVE || !m_dragThresholdReached || !TARGET->floating())
+        return std::nullopt;
+
+    const auto SPACE = TARGET->space();
+    if (!SPACE || !SPACE->algorithm() || !SPACE->algorithm()->infinityActive())
+        return std::nullopt;
+
+    const auto MONITOR = State::monitorState()->query().vec(g_pInputManager->getMouseCoordsInternal()).run();
+    if (!MONITOR)
+        return std::nullopt;
+
+    const auto  LOCAL = g_pInputManager->getMouseCoordsInternal() - MONITOR->m_position;
+    const float ZONE  = EDGE_PAN_ZONE;
+
+    // speed grows towards the border
+    const auto SPEED = [](float dist) { return std::clamp(EDGE_PAN_MAX - (EDGE_PAN_MAX - EDGE_PAN_MIN) * (dist / (EDGE_PAN_ZONE)), EDGE_PAN_MIN, EDGE_PAN_MAX); };
+
+    Vector2D    velocity = {};
+
+    if (LOCAL.x < ZONE)
+        velocity.x = SPEED(LOCAL.x);
+    else if (LOCAL.x > MONITOR->m_size.x - ZONE)
+        velocity.x = -SPEED(MONITOR->m_size.x - LOCAL.x);
+
+    if (LOCAL.y < ZONE)
+        velocity.y = SPEED(LOCAL.y);
+    else if (LOCAL.y > MONITOR->m_size.y - ZONE)
+        velocity.y = -SPEED(MONITOR->m_size.y - LOCAL.y);
+
+    if (velocity == Vector2D{})
+        return std::nullopt;
+
+    return velocity;
+}
+
+void CDragStateController::updateEdgePan() {
+    if (!edgePanVelocity()) {
+        if (m_edgePanTimer)
+            m_edgePanTimer->updateTimeout(std::nullopt);
+
+        return;
+    }
+
+    if (!m_edgePanTimer) {
+        m_edgePanTimer = makeShared<CEventLoopTimer>(
+            std::nullopt, [this](SP<CEventLoopTimer> self, void*) { edgePanTick(); }, nullptr);
+        g_pEventLoopManager->addTimer(m_edgePanTimer);
+    }
+
+    m_edgePanTimer->updateTimeout(std::chrono::milliseconds(16));
+}
+
+void CDragStateController::edgePanTick() {
+    const auto VELOCITY = edgePanVelocity();
+    if (!VELOCITY) {
+        if (m_edgePanTimer)
+            m_edgePanTimer->updateTimeout(std::nullopt);
+
+        return;
+    }
+
+    const auto NOW = std::chrono::steady_clock::now();
+    const auto DT  = m_edgePanLast.time_since_epoch().count() == 0 ? 0.016F : std::clamp(std::chrono::duration<float>(NOW - m_edgePanLast).count(), 0.F, 0.05F);
+    m_edgePanLast  = NOW;
+
+    if (!g_layoutManager->panInfinityPlane(*VELOCITY * DT)) {
+        if (m_edgePanTimer)
+            m_edgePanTimer->updateTimeout(std::nullopt);
+
+        return;
+    }
+
+    const auto TARGET = m_target.lock();
+    if (!TARGET) {
+        if (m_edgePanTimer)
+            m_edgePanTimer->updateTimeout(std::nullopt);
+
+        return;
+    }
+
+    // the plane moved by the pan; put the window back under the pointer so it follows it, not the plane
+    const auto MOUSECOORDS = g_pInputManager->planeCoords(g_pInputManager->getMouseCoordsInternal());
+    TARGET->damageEntire();
+    TARGET->setPositionGlobal({(MOUSECOORDS - m_dragHotspot).round(), TARGET->position().size()});
+    TARGET->warpPositionSize();
+    TARGET->damageEntire();
+
+    m_edgePanTimer->updateTimeout(std::chrono::milliseconds(16));
 }

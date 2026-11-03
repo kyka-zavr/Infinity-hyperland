@@ -9,6 +9,7 @@
 #include "../helpers/math/Math.hpp"
 
 #include <xkbcommon/xkbcommon.h>
+#include <chrono>
 #include <map>
 #include <string>
 #include <vector>
@@ -36,7 +37,7 @@ namespace Switcher {
         bool        onMouseButton(uint32_t button, bool pressed);
         void        onMouseMove(const Vector2D& pos); // hovering a tile selects it
 
-        // drawn on every monitor
+        // drawn only on the monitor the pointer is on
         void        draw(Render::CRenderContext& ctx, PHLMONITOR monitor);
 
       private:
@@ -59,11 +60,21 @@ namespace Switcher {
         void                step(bool backwards);
         void                updateText(SText& t, const std::string& text, int pt, int maxWidthPx, int weight, const CHyprColor& color);
         void                close();
+        void                finish();
         void                redraw();
 
         std::vector<SEntry> m_entries;
         size_t              m_selected = 0;
         uint32_t            m_holdMods = 0; // modifiers whose release confirms the choice
+
+        // the panel lives on the monitor the pointer was on when the switcher opened
+        PHLMONITOR m_monitor;
+
+        // animation: the panel fades and grows in, fades out when it closes, the selection slides between tiles
+        bool                                    m_closing = false;
+        std::chrono::steady_clock::time_point   m_openTime, m_closeTime, m_animLast;
+        float                                   m_selCol = 0, m_selRow = 0;
+        bool                                    m_selAnimValid = false;
 
         // where the panel and its tiles are on each monitor (layout coordinates), filled while drawing
         struct SLayout {

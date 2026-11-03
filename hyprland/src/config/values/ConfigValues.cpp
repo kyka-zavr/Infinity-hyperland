@@ -661,6 +661,8 @@ std::vector<SP<IValue>> Values::getConfigValues() {
         MS<Color>("infinity:color_text", "Main text color of the Infinity panels.", 0xffffffff),
         MS<Color>("infinity:color_subtext", "Secondary text color of the Infinity panels (window titles).", 0xffb8bdcc),
         MS<String>("infinity:pan_mods", "Modifiers that, while held, make mouse movement pan the whole plane in Infinity mode, e.g. \"SUPER ALT\". Empty to disable.", "SUPER ALT"),
+        MS<String>("infinity:overlay_classes", "Comma or space separated app ids of windows that behave as an overlay on the monitor in Infinity mode (pinned, not zoomed, kept in the middle). Empty to disable.",
+                   "infinity-settings"),
 
         /*
          * xwayland:

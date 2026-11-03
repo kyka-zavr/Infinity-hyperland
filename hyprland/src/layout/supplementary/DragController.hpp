@@ -4,7 +4,10 @@
 #include "../../managers/input/InputManager.hpp"
 #include "../../helpers/signal/Signal.hpp"
 
+#include <chrono>
 #include <optional>
+
+class CEventLoopTimer;
 
 namespace Layout {
     enum eRectCorner : uint8_t;
@@ -45,6 +48,11 @@ namespace Layout::Supplementary {
         } m_events;
 
       private:
+        // Infinity: dragging a window to the edge of its monitor pans the plane, so the window is never stopped by a screen border
+        void                               updateEdgePan();
+        void                               edgePanTick();
+        std::optional<Vector2D>            edgePanVelocity() const;
+
         WP<ITarget>                        m_target;
 
         eMouseBindMode                     m_dragMode             = MBIND_INVALID;
@@ -63,5 +71,8 @@ namespace Layout::Supplementary {
         Vector2D                           m_draggingWindowOriginalFloatSize;
         Layout::eRectCorner                m_grabbedCorner = sc<Layout::eRectCorner>(0) /* CORNER_NONE */;
         std::optional<Layout::eRectCorner> m_forcedGrabbedCorner;
+
+        SP<CEventLoopTimer>                   m_edgePanTimer;
+        std::chrono::steady_clock::time_point m_edgePanLast;
     };
 };

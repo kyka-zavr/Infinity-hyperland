@@ -63,7 +63,7 @@ namespace Layout {
 
       private:
         Config::ErrorResult           infinityMsg(const std::string_view& sv);
-        void                          swapFloatingAlgo(UP<IFloatingAlgorithm>&& algo);
+        void                          swapFloatingAlgo(UP<IFloatingAlgorithm>&& algo, bool preservePlaced = true);
 
         CAlgorithm(UP<ITiledAlgorithm>&& tiled, UP<IFloatingAlgorithm>&& floating, SP<CSpace> space);
 
