@@ -2,7 +2,7 @@
 
 [English](design-canvas.md) | [Русский](../ru/design-canvas.md)
 
-Status: in progress. Done: the mode belongs to the session (`InfinityCanvas`); every monitor draws every window of the canvas that its view covers, without a workspace filter, and focusing such a window does not switch a workspace. Not yet: the canvas object with its own camera, the removal of the per-workspace algorithm, clipping and the damage/z-order rules (below).
+Status: in progress. Done: the mode belongs to the session (`InfinityCanvas`); every monitor draws every window of the canvas that its view covers, without a workspace filter, and focusing such a window does not switch a workspace. Not yet: removing the per-workspace algorithm, the explicit canvas z-order, clipping at the renderer level and narrower damage under zoom (below). The camera now lives on the canvas (`InfinityCanvas`), and visibility, rendering and input use it.
 
 ## The model
 

@@ -13,6 +13,7 @@ Release 3 work: the canvas for several monitors (see [docs/en/design-canvas.md](
 - **The Infinity mode belongs to the session, not to a workspace**: turning it on or off applies to every workspace of every monitor, and to workspaces that are created or shown later. Switching a workspace no longer drops out of the mode, and a window opened on the second monitor while the first one is in Infinity now lands on the plane as well.
 - **The canvas is not filtered by workspaces**: while the mode is on, every monitor draws every window that its view of the plane covers, whatever workspace the window came from. Switching a workspace changes nothing on screen, and focusing such a window does not switch a workspace either.
 - **Wheel zoom follows the pointer on any monitor**: the anchor is taken from the monitor under the cursor instead of the focused workspace's monitor.
+- **The camera lives on the canvas**: the view and the zoom moved from the per-workspace algorithm into the `InfinityCanvas` object (`view`, `zoom`, `pan`, `zoomBy`, `visibleRect(monitor)`), and visibility of a window on a monitor uses that one mapping. Directional focus and the focus cycle also work across the whole canvas now.
 
 ## v0.57.0-infinity.2.5 (2026-11-03)
 

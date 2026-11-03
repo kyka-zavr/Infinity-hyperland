@@ -1,6 +1,7 @@
 // Copyright (c) 2026, kyka-zavr.
 
 #include "InfinityFloatingAlgorithm.hpp"
+#include "InfinityCanvas.hpp"
 
 #include "../../Algorithm.hpp"
 
@@ -64,22 +65,14 @@ static Vector2D s_savedView     = {};
 static float    s_savedZoom     = 1.F;
 static bool     s_haveSavedView = false;
 
-Vector2D                                         CInfinityFloatingAlgorithm::s_view      = {};
-float                                            CInfinityFloatingAlgorithm::s_zoom      = 1.F;
 std::vector<CInfinityFloatingAlgorithm*>         CInfinityFloatingAlgorithm::s_instances = {};
 
-CInfinityFloatingAlgorithm::CInfinityFloatingAlgorithm() : m_applied(s_view) {
+CInfinityFloatingAlgorithm::CInfinityFloatingAlgorithm() : m_applied(canvas()->view()) {
     s_instances.emplace_back(this);
 }
 
 CInfinityFloatingAlgorithm::~CInfinityFloatingAlgorithm() {
     std::erase(s_instances, this);
-
-    // the last Infinity workspace is gone: a workspace without a saved canvas starts from a clean plane
-    if (s_instances.empty()) {
-        s_view = {};
-        s_zoom = 1.F;
-    }
 }
 
 void CInfinityFloatingAlgorithm::damageMonitor() const {
@@ -173,7 +166,7 @@ void CInfinityFloatingAlgorithm::adopt(SP<ITarget> target) {
 }
 
 void CInfinityFloatingAlgorithm::pan(const Vector2D& Δ) {
-    s_view -= Δ;
+    canvas()->pan(Δ);
 
     // copy: placing targets can end up in code that creates or destroys algorithms
     const auto ALL = s_instances;
@@ -183,16 +176,8 @@ void CInfinityFloatingAlgorithm::pan(const Vector2D& Δ) {
 }
 
 void CInfinityFloatingAlgorithm::zoomBy(float mult, const Vector2D& anchor) {
-    constexpr float MIN_ZOOM = 0.1F;
-    constexpr float MAX_ZOOM = 4.F;
-
-    const float     NEW_ZOOM = std::clamp(s_zoom * mult, MIN_ZOOM, MAX_ZOOM);
-    if (NEW_ZOOM == s_zoom)
+    if (!canvas()->zoomBy(mult, anchor))
         return;
-
-    // the world point under the anchor stays under it: view' = view + anchor / zoom - anchor / zoom'
-    s_view += anchor / s_zoom - anchor / NEW_ZOOM;
-    s_zoom = NEW_ZOOM;
 
     const auto ALL = s_instances;
     for (const auto& a : ALL) {
@@ -203,16 +188,16 @@ void CInfinityFloatingAlgorithm::zoomBy(float mult, const Vector2D& anchor) {
 
 void CInfinityFloatingAlgorithm::resetView() {
     // only our own targets go back to their world positions; the shared view stays for the other workspaces
-    const auto SHARED = s_view;
-    s_view            = {};
+    const auto SHARED = canvas()->view();
+    canvas()->setView({});
     applyView();
-    s_view = SHARED;
+    canvas()->setView(SHARED);
 
     damageMonitor();
 }
 
 float CInfinityFloatingAlgorithm::zoom() const {
-    return s_zoom;
+    return canvas()->zoom();
 }
 
 void CInfinityFloatingAlgorithm::rememberFloatingBefore(SP<ITarget> target) {
@@ -224,7 +209,7 @@ bool CInfinityFloatingAlgorithm::wasFloatingBefore(SP<ITarget> target) const {
 }
 
 Vector2D CInfinityFloatingAlgorithm::view() const {
-    return s_view;
+    return canvas()->view();
 }
 
 void CInfinityFloatingAlgorithm::remember(SP<ITarget> target) {
@@ -234,7 +219,7 @@ void CInfinityFloatingAlgorithm::remember(SP<ITarget> target) {
 }
 
 void CInfinityFloatingAlgorithm::applyView() {
-    m_applied = s_view;
+    m_applied = canvas()->view();
 
     std::erase_if(m_world, [](const auto& e) { return e.first.expired(); });
 
@@ -253,7 +238,7 @@ void CInfinityFloatingAlgorithm::applyView() {
         }
 
         auto box = world;
-        box.translate(-s_view);
+        box.translate(-canvas()->view());
 
         TARGET->setPositionGlobal(box);
         TARGET->warpPositionSize();
@@ -262,7 +247,7 @@ void CInfinityFloatingAlgorithm::applyView() {
 }
 
 void CInfinityFloatingAlgorithm::centerNewTarget(SP<ITarget> target) {
-    if (!target || s_zoom == 1.F)
+    if (!target || canvas()->zoom() == 1.F)
         return;
 
     // the default placement is in layout coordinates, but the plane is drawn scaled (screen = layout * zoom): only a scaled
@@ -276,7 +261,7 @@ void CInfinityFloatingAlgorithm::centerNewTarget(SP<ITarget> target) {
         return;
 
     const auto SIZE = target->position().size();
-    target->setPositionGlobal(CBox{(MONITOR->m_position + MONITOR->m_size / 2.F) / s_zoom - SIZE / 2.F, SIZE});
+    target->setPositionGlobal(CBox{(MONITOR->m_position + MONITOR->m_size / 2.F) / canvas()->zoom() - SIZE / 2.F, SIZE});
     target->warpPositionSize();
 }
 
@@ -290,8 +275,8 @@ void CInfinityFloatingAlgorithm::storeCanvasBoxes() const {
     }
 
     if (!SAVED.empty()) {
-        s_savedView     = s_view;
-        s_savedZoom     = s_zoom;
+        s_savedView     = canvas()->view();
+        s_savedZoom     = canvas()->zoom();
         s_haveSavedView = true;
     }
 }
@@ -306,8 +291,8 @@ bool CInfinityFloatingAlgorithm::prepareCanvas(const std::vector<SP<ITarget>>& t
     if (!ANY) {
         // a workspace that was never on the canvas starts from a clean plane, unless another workspace is still in the mode
         if (s_instances.empty()) {
-            s_view = {};
-            s_zoom = 1.F;
+            canvas()->setView({});
+            canvas()->setZoom(1.F);
         }
 
         return false;
@@ -315,8 +300,8 @@ bool CInfinityFloatingAlgorithm::prepareCanvas(const std::vector<SP<ITarget>>& t
 
     // another Infinity workspace is still in the mode: its shared view must not be disturbed
     if (s_instances.empty() && s_haveSavedView) {
-        s_view = s_savedView;
-        s_zoom = s_savedZoom;
+        canvas()->setView(s_savedView);
+        canvas()->setZoom(s_savedZoom);
     }
 
     return true;
@@ -332,7 +317,7 @@ bool CInfinityFloatingAlgorithm::restoreCanvasBox(SP<ITarget> target) {
     SAVED.erase(IT);
 
     // the box is a world box, the view may have changed since it was stored
-    box.translate(-s_view);
+    box.translate(-canvas()->view());
     target->setPositionGlobal(box);
     target->warpPositionSize();
 

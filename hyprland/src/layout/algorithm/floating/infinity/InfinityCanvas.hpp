@@ -3,6 +3,7 @@
 #pragma once
 
 #include "../../../../desktop/DesktopTypes.hpp"
+#include "../../../../helpers/math/Math.hpp"
 #include "../../../../helpers/memory/Memory.hpp"
 #include "../../../../helpers/signal/Signal.hpp"
 
@@ -26,10 +27,24 @@ namespace Layout::Floating {
         void setEnabled(bool enabled);
         void toggle();
 
+        // the camera: one transform for every monitor, desk = (canvas - view) * zoom. Canvas coordinates are layout
+        // coordinates after the view is subtracted: screen = canvas - view, and the renderer scales that by zoom.
+        Vector2D view() const;
+        float    zoom() const;
+        void     setView(const Vector2D& view);
+        void     setZoom(float zoom);
+        void     pan(const Vector2D& Δ);                       // the content follows the delta (screen pixels)
+        bool     zoomBy(float mult, const Vector2D& anchor);   // keeps the layout point `anchor` fixed, false when clamped
+
+        // the part of the canvas a monitor shows at the current zoom: [pos / zoom, (pos + size) / zoom]
+        CBox visibleRect(PHLMONITOR monitor) const;
+
       private:
         void applyTo(PHLWORKSPACE workspace);
         void applyToAll();
 
+        Vector2D            m_view;
+        float               m_zoom = 1.F;
         bool                m_enabled = false;
         CHyprSignalListener m_wsActive, m_wsCreated;
     };

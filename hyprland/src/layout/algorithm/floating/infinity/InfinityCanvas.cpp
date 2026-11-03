@@ -7,6 +7,7 @@
 
 #include "../../../../desktop/view/window/Window.hpp"
 #include "../../../../event/EventBus.hpp"
+#include "../../../../output/Monitor.hpp"
 #include "../../../../state/WorkspaceState.hpp"
 #include "../../../../workspace/HLWorkspace.hpp"
 
@@ -50,6 +51,51 @@ void CInfinityCanvas::setEnabled(bool enabled) {
 
 void CInfinityCanvas::toggle() {
     setEnabled(!m_enabled);
+}
+
+Vector2D CInfinityCanvas::view() const {
+    return m_view;
+}
+
+float CInfinityCanvas::zoom() const {
+    return m_zoom;
+}
+
+void CInfinityCanvas::setView(const Vector2D& view) {
+    m_view = view;
+}
+
+void CInfinityCanvas::setZoom(float zoom) {
+    m_zoom = zoom;
+}
+
+void CInfinityCanvas::pan(const Vector2D& Δ) {
+    m_view -= Δ;
+}
+
+bool CInfinityCanvas::zoomBy(float mult, const Vector2D& anchor) {
+    constexpr float MIN_ZOOM = 0.1F;
+    constexpr float MAX_ZOOM = 4.F;
+
+    const float     NEW_ZOOM = std::clamp(m_zoom * mult, MIN_ZOOM, MAX_ZOOM);
+    if (NEW_ZOOM == m_zoom)
+        return false;
+
+    // the point under the anchor stays under it: view' = view + anchor / zoom - anchor / zoom'
+    m_view += anchor / m_zoom - anchor / NEW_ZOOM;
+    m_zoom = NEW_ZOOM;
+
+    return true;
+}
+
+CBox CInfinityCanvas::visibleRect(PHLMONITOR monitor) const {
+    if (!monitor)
+        return {};
+
+    if (m_zoom == 1.F)
+        return {monitor->m_position, monitor->m_size};
+
+    return {monitor->m_position / m_zoom, monitor->m_size / m_zoom};
 }
 
 void CInfinityCanvas::applyTo(PHLWORKSPACE workspace) {

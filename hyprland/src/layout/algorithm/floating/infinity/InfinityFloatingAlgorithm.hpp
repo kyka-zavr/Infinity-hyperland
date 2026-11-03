@@ -79,8 +79,6 @@ namespace Layout::Floating {
         Vector2D                           m_applied;
 
         // shared by all instances
-        static Vector2D                                  s_view;
-        static float                                     s_zoom;
         static std::vector<CInfinityFloatingAlgorithm*>  s_instances;
         std::map<WP<ITarget>, CBox>        m_world;
         std::set<WP<ITarget>>              m_floatingBefore;

@@ -1,6 +1,7 @@
 #include "WindowPresentation.hpp"
 
 #include "Window.hpp"
+#include "../../../layout/algorithm/floating/infinity/InfinityCanvas.hpp"
 #include "../../../animation/AnimationManager.hpp"
 #include "../../../config/ConfigValue.hpp"
 #include "../../../config/shared/animation/AnimationTree.hpp"
@@ -338,12 +339,11 @@ bool CWindowPresentation::visibleOnMonitor(PHLMONITOR monitor) {
     if (m_window.isFloating())
         windowBox = m_window.getFullWindowBoundingBox();
 
-    // under the Infinity zoom the monitor shows the part of the plane that scales onto its box: [pos / zoom, (pos + size) / zoom]
+    // in Infinity the monitor shows the part of the canvas that its place and the zoom select; the canvas owns that mapping
     CBox viewBox = {monitor->m_position, monitor->m_size};
-    if (m_window.m_workspace && m_window.m_workspace->space() && m_window.m_workspace->space()->algorithm()) {
-        if (const float ZOOM = m_window.m_workspace->space()->algorithm()->infinityZoom(); ZOOM != 1.F)
-            viewBox = {monitor->m_position / ZOOM, monitor->m_size / ZOOM};
-    }
+    if (m_window.m_workspace && m_window.m_workspace->space() && m_window.m_workspace->space()->algorithm() &&
+        m_window.m_workspace->space()->algorithm()->infinityActive())
+        viewBox = Layout::Floating::canvas()->visibleRect(monitor);
 
     return !windowBox.intersection(viewBox).empty();
 }
