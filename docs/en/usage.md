@@ -13,9 +13,10 @@ Switching never loses anything:
 
 - a window created in tiling mode remembers its tiled place; after Infinity and back it returns to it;
 - a window created in Infinity takes the nearest free place in the tiled layout when you switch back;
-- windows that were already floating stay floating.
+- windows that were already floating stay floating;
+- switching the mode off and on again returns the windows to the places and sizes they had on the canvas, and the plane to the same pan and zoom. A workspace that was never in the mode starts from a clean plane.
 
-New windows in Infinity open in the middle of the visible area and may overlap.
+New windows in Infinity open in the middle of the visible area (at any zoom) and may overlap.
 
 With several monitors the plane is shared: monitors show neighbouring parts of the same plane, laid out like the monitors stand on your desk, so a window can be dragged from one screen to another. Pan and zoom are shared too.
 
@@ -26,7 +27,7 @@ Binds below come from `hyprland/example/hyprland.lua` (section INFINITY) or from
 | Action | Default |
 |---|---|
 | Toggle Infinity | `SUPER+SHIFT+SPACE` |
-| Move a window | `SUPER+LMB` drag |
+| Move a window | `SUPER+LMB` drag (near the edge of a monitor the canvas slides too) |
 | Resize a window | `SUPER+RMB` drag (also by the window edge when `general:resize_on_border` is on) |
 | Pan the canvas | move the mouse with the pan modifiers held (built in, `SUPER+ALT`) |
 | Pan from the keyboard | `SUPER+CTRL+arrows` (150 px per press, repeats) |
@@ -34,13 +35,15 @@ Binds below come from `hyprland/example/hyprland.lua` (section INFINITY) or from
 | Zoom from the keyboard | `SUPER+CTRL+=` zoom in, `SUPER+CTRL+-` zoom out |
 | Window switcher | `ALT+TAB`, back: `ALT+SHIFT+TAB` |
 
+While a window is dragged in Infinity and the pointer comes near the edge of a monitor, the canvas slides under it, so a window is never stopped by a screen border: drag it to the edge and keep dragging.
+
 Zoom scales the whole canvas like a map; windows keep their real size. Zoom ranges from 0.1x to 4x. Panels and wallpapers (layer-shell surfaces) are not zoomed. Outside Infinity the wheel goes to the application as usual.
 
 On a real mouse the cursor stays in place while you pan and the canvas moves under it. In a nested session (absolute pointer) the cursor follows the mouse.
 
 ## Window switcher
 
-Hold a modifier and press `TAB`: a panel with tiles appears on every monitor, one tile per window of **all workspaces**, most recently used first. Each tile shows the application icon and name, a **live preview** and the window title. The selection starts on the previously used window.
+Hold a modifier and press `TAB`: a panel with tiles appears on the monitor the pointer is on, one tile per window of **all workspaces**, most recently used first. Each tile shows the application icon and name, a **live preview** and the window title. The selection starts on the previously used window.
 
 | Key / action | Does |
 |---|---|
@@ -53,15 +56,16 @@ Hold a modifier and press `TAB`: a panel with tiles appears on every monitor, on
 | `ESC` | cancel |
 | release the held modifier | focus the selected window |
 
-A quick `ALT+TAB` tap switches to the previous window and a second tap comes back. In Infinity mode the canvas is panned so that the chosen window ends up in the middle of its monitor (zoom taken into account); in tiling mode its workspace is activated. The modifier that confirms the choice is the one held when the panel opened (`ALT`, `CTRL` or `SUPER`; `SHIFT` only changes direction).
+A quick `ALT+TAB` tap switches to the previous window and a second tap comes back. The chosen window is always shown: if it lives on another workspace, that workspace (and its monitor) is switched to and the window is raised. In Infinity mode the canvas is also panned so that the window ends up in the middle of its monitor (zoom taken into account). The modifier that confirms the choice is the one held when the panel opened (`ALT`, `CTRL` or `SUPER`; `SHIFT` only changes direction).
 
 ## Options
 
 ```lua
 hl.config({ infinity = {
-    pan_mods  = "SUPER ALT",   -- modifiers that turn mouse movement into canvas panning; "" disables
-    zoom_mods = "CTRL",        -- modifiers for wheel zoom; "" disables
-    zoom_step = 1.1,           -- zoom factor of one wheel notch (1.01 to 2)
+    pan_mods        = "SUPER ALT",         -- modifiers that turn mouse movement into canvas panning; "" disables
+    zoom_mods       = "CTRL",              -- modifiers for wheel zoom; "" disables
+    zoom_step       = 1.1,                 -- zoom factor of one wheel notch (1.01 to 2)
+    overlay_classes = "infinity-settings", -- app ids that are an overlay on the monitor in Infinity: pinned, not zoomed, centered; "" disables
 } })
 ```
 
@@ -94,7 +98,7 @@ Hyprland 0.57 reads only Lua configs (`hyprland.lua`); the old `hyprland.conf` f
 
 ## Settings window
 
-`SUPER+I` opens **Infinity Settings** (a Qt6 application; also `infinity-settings` from a terminal or a launcher). Changes apply as you make them. Pages:
+`SUPER+I` opens **Infinity Settings** (a Qt6 application; also `infinity-settings` from a terminal or a launcher). In Infinity mode it is an **overlay on the monitor**, not a window on the canvas: it is pinned, always in the middle of the monitor, drawn at its normal size (the zoom does not scale it) and cannot be moved or resized. Change this with the `infinity:overlay_classes` option. Changes apply as you make them. Pages:
 
 - **Infinity**: toggle the mode, zoom step, the keys for wheel zoom and mouse panning.
 - **Keyboard**: add layouts (all xkb languages and variants), order them, choose shared or per-window layout, the layout of a new window and the Num Lock mode.

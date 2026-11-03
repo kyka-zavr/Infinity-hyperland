@@ -10,6 +10,7 @@
 - Upstream updates: the sync script, a daily check on GitHub, and the port from Hyprland 0.56.2 to 0.57.0.
 - Bilingual documentation (English and Russian).
 - Keyboard layouts (per window, default layout, Num Lock modes), the settings window with one color palette and a bind editor, a text installer ([design-settings.md](design-settings.md)).
+- Release 2.5: the switcher shows the panel on the monitor with the pointer, is animated, always switches to and raises the chosen window; the canvas follows a dragged window at monitor edges; the canvas (window places, sizes, pan and zoom) is restored when the mode is switched on again; new windows open in the middle of the screen at any zoom; the settings window is an overlay on the monitor in Infinity (`infinity:overlay_classes`).
 
 ## Known issues
 
