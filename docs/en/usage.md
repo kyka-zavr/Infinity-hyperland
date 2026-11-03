@@ -18,7 +18,7 @@ Switching never loses anything:
 
 New windows in Infinity open in the middle of the visible area (at any zoom) and may overlap.
 
-With several monitors the plane is shared: monitors show neighbouring parts of the same plane, laid out like the monitors stand on your desk, so a window can be dragged from one screen to another. Pan and zoom are shared too.
+With several monitors the plane is shared: monitors show neighbouring parts of the same plane, laid out like the monitors stand on your desk, so a window can be dragged from one screen to another. Pan and zoom are shared too. In the mode the workspaces stop mattering for the picture: every monitor draws every window of the canvas that its view covers, so switching a workspace changes nothing on screen.
 
 ## Controls
 

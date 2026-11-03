@@ -11,6 +11,7 @@
 - Bilingual documentation (English and Russian).
 - Keyboard layouts (per window, default layout, Num Lock modes), the settings window with one color palette and a bind editor, a text installer ([design-settings.md](design-settings.md)).
 - Release 2.5: the switcher shows the panel on the monitor with the pointer, is animated, always switches to and raises the chosen window; the canvas follows a dragged window at monitor edges; the canvas (window places, sizes, pan and zoom) is restored when the mode is switched on again; new windows open in the middle of the screen at any zoom; the settings window is an overlay on the monitor in Infinity (`infinity:overlay_classes`).
+- Release 3 (canvas): the mode is one for the session; monitors are cameras onto one canvas — every monitor draws every window of the canvas without a workspace filter, focus does not switch workspaces and works across the canvas, the camera (view and zoom) lives on the canvas, wheel zoom follows the pointer, and windows with blur/rounded corners are no longer clipped at `monitor size * zoom`.
 
 ## Known issues
 
@@ -22,7 +23,6 @@
 
 ## Planned
 
-- **Release 3 (big)**: rework of the canvas for several monitors (one workspace for all monitors, windows vanishing at pan and zoom limits, parallax on monitors of different sizes, a window opened on a second monitor while the first is in Infinity, and the smaller bugs); see [design-canvas.md](design-canvas.md).
 - A PKGBUILD to install as a package.
 - More testing on real hardware: HiDPI, several GPUs, TTY edge cases.
 - Config-copy check for key collisions (warn and suggest free keys when your config already uses the Infinity keys).
