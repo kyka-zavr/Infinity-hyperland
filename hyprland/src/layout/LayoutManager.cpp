@@ -157,10 +157,11 @@ Config::ErrorResult CLayoutManager::infinityMsg(const std::string_view& sv, PHLW
                                    Config::eConfigErrorLevel::INFO, Config::eConfigErrorCode::UNKNOWN);
     }
 
-    // "zoom <mult> cursor": keep the plane point under the pointer fixed
+    // "zoom <mult> cursor": keep the plane point under the pointer fixed. The pointer may be on any monitor, not only on the
+    // one of the focused workspace: the zoom belongs to the whole canvas.
     if (arg.starts_with("zoom ") && arg.ends_with(" cursor")) {
         const auto SCREEN = g_pInputManager->getMouseCoordsInternal();
-        const auto MON    = focused->m_monitor.lock();
+        const auto MON    = State::monitorState()->query().vec(SCREEN).run();
         const auto LOCAL  = MON ? SCREEN - MON->m_position : SCREEN;
         arg               = std::format("{} {} {}", arg.substr(0, arg.size() - sizeof(" cursor") + 1), LOCAL.x, LOCAL.y);
     }
