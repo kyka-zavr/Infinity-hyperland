@@ -2,7 +2,7 @@
 
 [English](design-canvas.md) | [Русский](../ru/design-canvas.md)
 
-Status: in progress. Done: the mode belongs to the session (`InfinityCanvas`) — it is turned on and off on every workspace of every monitor and on the workspaces that appear later. Not yet: the canvas itself (below).
+Status: in progress. Done: the mode belongs to the session (`InfinityCanvas`); every monitor draws every window of the canvas that its view covers, without a workspace filter, and focusing such a window does not switch a workspace. Not yet: the canvas object with its own camera, the removal of the per-workspace algorithm, clipping and the damage/z-order rules (below).
 
 ## The model
 
@@ -34,7 +34,7 @@ A session-wide **canvas** object (`CCanvas`) instead of per-workspace algorithms
 
 - **Windows.** Entering the mode takes every window onto the canvas (remembering its home workspace and geometry). Leaving it puts every window back: floating ones at their canvas size and place, tiled ones into the tiled layout by their centre (as today). The canvas is the only owner of the windows while the mode is on.
 - **Camera.** Pan and zoom are one transform from canvas coordinates to desk coordinates: `desk = (canvas - view) * zoom`. Each monitor sees the canvas rectangle under its desk box; zoom keeps the canvas point under the cursor fixed for every monitor, because every monitor uses the same transform.
-- **Rendering.** Every monitor draws all canvas windows that intersect its rectangle, clipped to it, in the canvas z-order. No workspace filter at all.
+- **Rendering.** Every monitor draws all canvas windows that intersect its rectangle, clipped to it, in the canvas z-order. No workspace filter at all. (First version done: rendering all canvas windows, no workspace filter; clipping and the explicit canvas z-order are still to do.)
 - **Input and focus.** Hit testing in canvas coordinates; focusing or raising a window does not switch a workspace (there is none), the window is already on the canvas.
 - **Tiling mode** keeps working as before and is untouched.
 

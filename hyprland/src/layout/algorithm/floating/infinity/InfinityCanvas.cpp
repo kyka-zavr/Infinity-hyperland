@@ -5,6 +5,7 @@
 #include "../../Algorithm.hpp"
 #include "../../../space/Space.hpp"
 
+#include "../../../../desktop/view/window/Window.hpp"
 #include "../../../../event/EventBus.hpp"
 #include "../../../../state/WorkspaceState.hpp"
 #include "../../../../workspace/HLWorkspace.hpp"
@@ -21,6 +22,14 @@ CInfinityCanvas::CInfinityCanvas() {
     // a workspace that is switched to while the mode is on joins the mode at once
     m_wsActive  = Event::bus()->m_events.workspace.active.listen([this](PHLWORKSPACE workspace) { applyTo(workspace); });
     m_wsCreated = Event::bus()->m_events.workspace.createdLate.listen([this](PHLWORKSPACEREF workspace) { applyTo(workspace.lock()); });
+}
+
+bool Floating::isCanvasWindow(PHLWINDOW window) {
+    if (!window || !window->m_workspace || !window->m_workspace->space())
+        return false;
+
+    const auto ALGORITHM = window->m_workspace->space()->algorithm();
+    return ALGORITHM && ALGORITHM->infinityActive();
 }
 
 bool CInfinityCanvas::enabled() const {
