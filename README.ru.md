@@ -2,6 +2,8 @@
 
 <p align="center"><img src="assets/logo/mark-dark.svg" width="180" alt="Infinity-hyperland"></p>
 
+<p align="center"><sub>Проект студии <a href="https://github.com/Ikira-Company"><b>Ikira Studio</b></a></sub></p>
+
 [English](README.md) | [Русский](README.ru.md)
 
 > **Это форк [Hyprland](https://github.com/hyprwm/Hyprland), а не оригинальный проект.**
