@@ -1,0 +1,115 @@
+#!/bin/sh
+# Обновления Infinity-hyprland: проверка новой версии на GitHub, уведомление и установка.
+#
+#   infinity-update check [--notify]   узнать последний релиз; --notify покажет уведомление один раз на версию
+#   infinity-update loop --pid N       проверять раз в 6 часов, пока жив процесс N (сессия)
+#   infinity-update run                скачать последний релиз и установить (спросит пароль sudo, запускать в терминале)
+#
+# Результат проверки лежит в ~/.cache/infinity-settings/update.state (строки key=value), его читает окно настроек.
+
+PREFIX="${INFINITY_HYPRLAND_PREFIX:-@PREFIX@}"
+REPO="${INFINITY_HYPRLAND_REPO:-kyka-zavr/Infinity-hyperland}"
+CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/infinity-settings"
+STATE="$CACHE/update.state"
+SRC="${XDG_DATA_HOME:-$HOME/.local/share}/infinity-hyprland/src"
+INTERVAL=21600
+
+case "${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}" in ru*) RU=1 ;; *) RU=0 ;; esac
+tr_() { if [ "$RU" = 1 ]; then printf '%s' "$1"; else printf '%s' "$2"; fi; }
+
+current_tag() {
+    # в метке: version=0.57.0-infinity v0.57.0-infinity.3.1, тег идёт последним словом
+    sed -n 's/^version=//p' "$PREFIX/.infinity-hyprland" 2>/dev/null | head -1 | awk '{print $NF}'
+}
+
+latest_tag() {
+    command -v curl >/dev/null 2>&1 || return 1
+    curl -fsS --max-time 10 -H 'Accept: application/vnd.github+json' \
+        "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null \
+        | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1
+}
+
+# 0, если $1 строго новее $2 (сортировка версий)
+is_newer() {
+    [ -n "$1" ] && [ -n "$2" ] && [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" = "$1" ]
+}
+
+do_check() {
+    notify=0; [ "$1" = "--notify" ] && notify=1
+    mkdir -p "$CACHE"
+    cur="$(current_tag)"
+    new="$(latest_tag)"
+    if [ -z "$new" ]; then
+        # нет сети или GitHub не ответил: прошлый результат не затираем, только помечаем неудачу
+        echo "error=network" > "$STATE.tmp"; grep -v '^error=' "$STATE" 2>/dev/null >> "$STATE.tmp"
+        mv "$STATE.tmp" "$STATE"; echo "current=$cur latest= available=0 error=network"; return 1
+    fi
+    avail=0; is_newer "$new" "$cur" && avail=1
+    notified="$(sed -n 's/^notified=//p' "$STATE" 2>/dev/null | head -1)"
+    {
+        echo "current=$cur"; echo "latest=$new"; echo "available=$avail"
+        echo "checked=$(date +%s)"; echo "notified=$notified"
+    } > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+    echo "current=$cur latest=$new available=$avail"
+    if [ "$avail" = 1 ] && [ "$notify" = 1 ] && [ "$notified" != "$new" ]; then
+        if command -v notify-send >/dev/null 2>&1; then
+            notify-send -a "Infinity-hyprland" -u normal \
+                "$(tr_ 'Доступно обновление Infinity-hyprland' 'Infinity-hyprland update available')" \
+                "$(tr_ "Новая версия $new (сейчас $cur). Настройки (SUPER+I) → System → Обновить." "New version $new (you have $cur). Settings (SUPER+I) → System → Update.")" \
+                >/dev/null 2>&1 && sed -i "s/^notified=.*/notified=$new/" "$STATE"
+        fi
+    fi
+    return 0
+}
+
+do_loop() {
+    pid=""
+    [ "$1" = "--pid" ] && pid="$2"
+    # одна проверка на сессию
+    mkdir -p "$CACHE"
+    exec 9>"$CACHE/loop.lock"
+    command -v flock >/dev/null 2>&1 && ! flock -n 9 && exit 0
+    sleep 90      # дать демону уведомлений подняться
+    while :; do
+        [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null && exit 0
+        do_check --notify >/dev/null 2>&1
+        i=0
+        while [ "$i" -lt "$INTERVAL" ]; do
+            sleep 60; i=$((i + 60))
+            [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null && exit 0
+        done
+    done
+}
+
+do_run() {
+    set -e
+    command -v git >/dev/null 2>&1 || { echo "$(tr_ 'нужен git' 'git is required')"; exit 1; }
+    new="$(latest_tag)"
+    [ -n "$new" ] || { echo "$(tr_ 'не удалось узнать последний релиз (нет сети?)' 'could not get the latest release (no network?)')"; exit 1; }
+    cur="$(current_tag)"
+    if ! is_newer "$new" "$cur"; then
+        echo "$(tr_ "Уже установлена последняя версия ($cur)." "Already up to date ($cur).")"; exit 0
+    fi
+    echo "==> $(tr_ "Обновление $cur → $new" "Updating $cur → $new")"
+    mkdir -p "$(dirname "$SRC")"
+    if [ -d "$SRC/.git" ]; then
+        git -C "$SRC" fetch --depth 1 origin "refs/tags/$new:refs/tags/$new"
+        git -C "$SRC" checkout -f "$new"
+    else
+        rm -rf "$SRC"
+        git clone --depth 1 --branch "$new" "https://github.com/$REPO.git" "$SRC"
+    fi
+    cd "$SRC"
+    # конфиги пользователя остаются, зависимости доставит pacman (с подтверждением sudo)
+    ./install.sh --plain --yes --config skip --prefix "$PREFIX"
+    do_check >/dev/null 2>&1 || true
+    echo
+    echo "$(tr_ 'Готово. Выйдите из сессии и войдите снова, чтобы запустить новую версию.' 'Done. Log out and back in to start the new version.')"
+}
+
+case "${1:-}" in
+    check) do_check "$2" ;;
+    loop)  shift; do_loop "$@" ;;
+    run)   do_run ;;
+    *) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac

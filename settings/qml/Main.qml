@@ -22,7 +22,8 @@ ApplicationWindow {
         { name: "Keyboard", icon: "⌨", source: "PageKeyboard.qml" },
         { name: "Appearance", icon: "◐", source: "PageAppearance.qml" },
         { name: "Keybinds", icon: "⌘", source: "PageBinds.qml" },
-        { name: "System", icon: "⚙", source: "PageSystem.qml" }
+        { name: "System", icon: "⚙", source: "PageSystem.qml" },
+        { name: "About", icon: "ⓘ", source: "PageAbout.qml" }
     ]
 
     Rectangle {

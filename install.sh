@@ -160,6 +160,17 @@ if [[ $IS_OURS -eq 1 ]]; then
     run_priv "$(dirname "$PREFIX")" rm -rf "$PREFIX"
 fi
 run_priv "$PREFIX" mkdir -p "$PREFIX"
+# Закрепляем библиотеки Hyprland, с которыми собран композитор: после обновления системных aquamarine,
+# hyprutils и подобных (у них меняется soname) форк продолжает запускаться. Скрипт сессии подключает $PREFIX/lib.
+mkdir -p "$STAGE$PREFIX/lib"
+bundled=()
+while read -r lib path; do
+    [[ "$lib" =~ ^lib(aquamarine|hypr[a-z]+|re2|muparser|tomlplusplus)\.so ]] || continue
+    [[ -f "$path" ]] || continue
+    cp -L "$path" "$STAGE$PREFIX/lib/$lib"
+    bundled+=("$lib")
+done < <(ldd "$BUILD/InfinityHyprland" | awk '$2 == "=>" && $3 ~ /^\// {print $1, $3}')
+((${#bundled[@]})) && echo "Закреплены библиотеки: ${bundled[*]}"
 run_priv "$PREFIX" cp -a "$STAGE$PREFIX/." "$PREFIX/"
 rm -rf "$STAGE"
 printf 'version=%s\ninstalled=%s\n' "$NEW_VERSION" "$(date -Iseconds)" > "$STAGE.marker"
@@ -176,10 +187,12 @@ subst() { sed "s|@PREFIX@|$PREFIX|g" "$1"; }
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 subst "$ROOT/installer/infinity-hyprland-session" > "$tmp/infinity-hyprland-session"
 subst "$ROOT/installer/infinity-hyprland-config"  > "$tmp/infinity-hyprland-config"
+subst "$ROOT/installer/infinity-update"           > "$tmp/infinity-update"
 subst "$ROOT/installer/infinity-hyprland.desktop" > "$tmp/infinity-hyprland.desktop"
 
 run_priv "$PREFIX" install -Dm755 "$tmp/infinity-hyprland-session" "$PREFIX/bin/infinity-hyprland-session"
 run_priv "$PREFIX" install -Dm755 "$tmp/infinity-hyprland-config"  "$PREFIX/bin/infinity-hyprland-config"
+run_priv "$PREFIX" install -Dm755 "$tmp/infinity-update"           "$PREFIX/bin/infinity-update"
 run_priv "$PREFIX" install -Dm644 "$ROOT/installer/share/infinity-include.lua" "$PREFIX/share/infinity-hyprland/infinity-include.lua"
 
 say "Пункт «Infinity-hyprland» в экране входа"

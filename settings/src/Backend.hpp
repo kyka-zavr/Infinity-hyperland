@@ -74,7 +74,17 @@ class Backend : public QObject {
     Q_INVOKABLE void         setBrightness(int percent);
     Q_INVOKABLE void         setWifi(bool on);
 
+    // updates: the state is written by infinity-update (check/loop); the button opens a terminal that runs "infinity-update run"
+    Q_INVOKABLE QVariantMap  updateInfo() const;              // {current, latest, available, error, checked}
+    Q_INVOKABLE void         checkUpdates();                  // async, emits updateChanged()
+    Q_INVOKABLE bool         startUpdate();                   // false if no terminal emulator was found
+
+    // about: [{group, rows: [{label, value}]}] plus the title and versions
+    Q_INVOKABLE QVariantMap  aboutInfo() const;               // {version, base, hardware: [{label, value}], system: [{label, value}]}
+    Q_INVOKABLE void         openUrl(const QString& url);     // only the project's own GitHub pages
+
   signals:
+    void updateChanged();
     void themeChanged();
     void statusChanged();
     void settingsChanged();
@@ -85,6 +95,7 @@ class Backend : public QObject {
     void     scheduleApply();
     QString  runTool(const QString& program, const QStringList& args, int timeoutMs = 3000) const;
     QString  hyprctl() const;
+    QString  updaterPath() const;
     void     saveTheme(const Theme& t);
 
     SettingsStore m_store;

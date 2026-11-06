@@ -34,6 +34,38 @@ if [ -x "$SETTINGS" ]; then
     INFINITY_HYPRLAND_CONFIG_DIR="$CONFDIR" "$SETTINGS" --apply --no-reload >/dev/null 2>&1
 fi
 
+# Библиотеки Hyprland, с которыми собран композитор, лежат в $PREFIX/lib (их кладёт install.sh):
+# обновление системных aquamarine, hyprutils и других не ломает запуск.
+LIBDIR="$PREFIX/lib"
+[ -d "$LIBDIR" ] && export LD_LIBRARY_PATH="$LIBDIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+# Проверка перед стартом: если композитор всё же не запустится (нет файла или библиотеки, например после
+# обновления mesa или wayland), входим в обычный Hyprland, а не возвращаемся на экран входа.
+broken=""
+if [ ! -x "$BIN" ]; then
+    broken="нет файла $BIN"
+elif command -v ldd >/dev/null 2>&1; then
+    missing="$(ldd "$BIN" 2>/dev/null | sed -n 's/^[[:space:]]*\(.*\) => not found.*/\1/p' | tr '\n' ' ')"
+    [ -n "$missing" ] && broken="не найдены библиотеки: $missing"
+fi
+if [ -n "$broken" ]; then
+    MSG="Infinity-hyprland не запущен ($broken). Запущен обычный Hyprland; пересоберите форк: ./install.sh"
+    echo "$MSG" >&2
+    mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}" 2>/dev/null
+    echo "$(date -Iseconds) $MSG" >> "${XDG_STATE_HOME:-$HOME/.local/state}/infinity-hyprland-fallback.log" 2>/dev/null
+    export XDG_CURRENT_DESKTOP="Hyprland" XDG_SESSION_DESKTOP="Hyprland"
+    unset HYPRLAND_CONFIG LD_LIBRARY_PATH
+    # уведомление покажется, как только поднимется демон уведомлений обычного Hyprland
+    ( sleep 8; command -v notify-send >/dev/null 2>&1 && notify-send -u critical "Infinity-hyprland" "$MSG" ) >/dev/null 2>&1 &
+    if command -v start-hyprland >/dev/null 2>&1; then exec start-hyprland; fi
+    if command -v Hyprland >/dev/null 2>&1; then exec Hyprland; fi
+    exit 1
+fi
+
+# раз в 6 часов смотрим, не вышел ли новый релиз, и показываем уведомление (живёт, пока жива сессия)
+UPDATER="$PREFIX/bin/infinity-update"
+[ -x "$UPDATER" ] && ( setsid "$UPDATER" loop --pid "$$" >/dev/null 2>&1 & )
+
 # start-hyprland перезапускает композитор в безопасном режиме после сбоя
 if [ -x "$START" ]; then
     exec "$START" --path "$BIN"

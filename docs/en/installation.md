@@ -71,6 +71,12 @@ The tool can be run later: `/opt/infinity-hyprland/bin/infinity-hyprland-config 
 
 The session wrapper sets `XDG_CURRENT_DESKTOP=Infinity-hyprland:Hyprland` (so portals and apps that expect "Hyprland" keep working), points the compositor to your config, and starts it through `start-hyprland`, which restarts the compositor in safe mode after a crash.
 
+## Updates inside the app
+
+- The session checks GitHub every 6 hours and shows a notification when a new release is out. Settings (`SUPER+I`) → **About** shows the versions and has **Changelog**, **Check** and **Update** buttons (below: hardware and system information).
+- **Update** opens a terminal and runs `infinity-update run` (you can also run it yourself): it clones the release tag into `~/.local/share/infinity-hyprland/src`, builds, runs `install.sh --plain --yes --config skip` and asks for the sudo password. Your configs stay. Log out and back in to start the new version.
+- Libraries: `install.sh` copies the Hyprland libraries the compositor was built with into `/opt/infinity-hyprland/lib`, so a system update of `aquamarine`, `hyprutils` and similar does not break the installed version. If it still cannot start, the session logs in to the regular Hyprland and shows a notification (log: `~/.local/state/infinity-hyprland-fallback.log`).
+
 ## Uninstall
 
 ```sh

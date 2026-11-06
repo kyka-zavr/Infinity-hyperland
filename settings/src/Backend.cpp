@@ -13,6 +13,12 @@
 #include <QJsonObject>
 #include <QKeySequence>
 #include <QProcess>
+#include <QUrl>
+#include <QDesktopServices>
+#include <QThread>
+#include <QSysInfo>
+#include <QStorageInfo>
+#include <QFileInfo>
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QStandardPaths>
@@ -556,4 +562,162 @@ void Backend::setWifi(bool on) {
 void Backend::layoutMessage(const QString& msg) {
     if (compositorRunning())
         runTool(hyprctl(), {"dispatch", QString("hl.dsp.layout(%1)").arg(LuaGenerator::quote(msg))});
+}
+
+// ---- updates ---------------------------------------------------------------------------------------------------
+
+QString Backend::updaterPath() const {
+    const QString next = QCoreApplication::applicationDirPath() + "/infinity-update";
+    if (QFileInfo(next).isExecutable())
+        return next;
+    return QStandardPaths::findExecutable("infinity-update");
+}
+
+QVariantMap Backend::updateInfo() const {
+    QVariantMap m{{"current", ""}, {"latest", ""}, {"available", false}, {"error", ""}, {"checked", 0}, {"installed", !updaterPath().isEmpty()}};
+    QFile f(QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + "/infinity-settings/update.state");
+    if (!f.open(QIODevice::ReadOnly))
+        return m;
+    for (const QByteArray& line : f.readAll().split('\n')) {
+        const int eq = line.indexOf('=');
+        if (eq <= 0)
+            continue;
+        const QString k = QString::fromUtf8(line.left(eq)), v = QString::fromUtf8(line.mid(eq + 1)).trimmed();
+        if (k == "available")
+            m[k] = (v == "1");
+        else if (k == "checked")
+            m[k] = v.toLongLong();
+        else if (k == "current" || k == "latest" || k == "error")
+            m[k] = v;
+    }
+    return m;
+}
+
+void Backend::checkUpdates() {
+    const QString tool = updaterPath();
+    if (tool.isEmpty())
+        return;
+    auto* p = new QProcess(this);
+    connect(p, &QProcess::finished, this, [this, p] {
+        p->deleteLater();
+        emit updateChanged();
+    });
+    p->start(tool, {"check"});
+}
+
+bool Backend::startUpdate() {
+    const QString tool = updaterPath();
+    if (tool.isEmpty())
+        return false;
+    // the update asks for the sudo password and shows the build, so it needs a terminal
+    const QString shellCmd = "'" + tool + "' run; echo; printf '%s' 'Enter: close... '; read _";
+    QStringList candidates;
+    if (const QString t = qEnvironmentVariable("TERMINAL"); !t.isEmpty())
+        candidates << t;
+    candidates << "kitty" << "foot" << "alacritty" << "wezterm" << "konsole" << "gnome-terminal" << "xfce4-terminal" << "xterm";
+    for (const QString& c : candidates) {
+        const QString exe = QStandardPaths::findExecutable(c);
+        if (exe.isEmpty())
+            continue;
+        QStringList args;
+        if (c == "gnome-terminal")
+            args << "--" << "sh" << "-c" << shellCmd;
+        else if (c == "wezterm")
+            args << "start" << "--" << "sh" << "-c" << shellCmd;
+        else
+            args << "-e" << "sh" << "-c" << shellCmd;
+        if (QProcess::startDetached(exe, args))
+            return true;
+    }
+    return false;
+}
+
+// ---- about -----------------------------------------------------------------------------------------------------
+
+static QString readFirstMatch(const QString& path, const QString& key) {
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly))
+        return {};
+    for (const QByteArray& line : f.readAll().split('\n')) {
+        const int c = line.indexOf(':');
+        if (c > 0 && QString::fromUtf8(line.left(c)).trimmed() == key)
+            return QString::fromUtf8(line.mid(c + 1)).trimmed();
+    }
+    return {};
+}
+
+static QString uptimeText() {
+    QFile f("/proc/uptime");
+    if (!f.open(QIODevice::ReadOnly))
+        return {};
+    const qint64 s = static_cast<qint64>(f.readAll().split(' ').value(0).toDouble());
+    const qint64 d = s / 86400, h = (s % 86400) / 3600, m = (s % 3600) / 60;
+    QStringList parts;
+    if (d)
+        parts << QString("%1 d").arg(d);
+    if (d || h)
+        parts << QString("%1 h").arg(h);
+    parts << QString("%1 min").arg(m);
+    return parts.join(' ');
+}
+
+QVariantMap Backend::aboutInfo() const {
+    auto row = [](const QString& label, const QString& value) { return QVariantMap{{"label", label}, {"value", value.isEmpty() ? QStringLiteral("Unknown") : value}}; };
+
+    // installed version from the marker the installer writes: "version=0.57.0-infinity v0.57.0-infinity.3.1"
+    QString version, base;
+    QFile marker(QCoreApplication::applicationDirPath() + "/../.infinity-hyprland");
+    if (marker.open(QIODevice::ReadOnly)) {
+        for (const QByteArray& line : marker.readAll().split('\n'))
+            if (line.startsWith("version=")) {
+                const QStringList w = QString::fromUtf8(line.mid(8)).trimmed().split(' ');
+                base    = w.value(0);
+                version = w.last();
+            }
+    }
+
+    QString cpu = readFirstMatch("/proc/cpuinfo", "model name");
+    cpu.replace(QRegularExpression("\\s+"), " ");
+    if (!cpu.isEmpty())
+        cpu += QString(" (%1)").arg(QThread::idealThreadCount());
+
+    QString gpu;
+    for (const QString& l : runTool("lspci", {"-mm"}, 3000).split('\n')) {
+        if (!l.contains("VGA compatible") && !l.contains("3D controller") && !l.contains("Display controller"))
+            continue;
+        const QStringList q = l.split('"');   // slot "class" "vendor" "device" ...
+        if (q.size() > 5) {
+            gpu = (q[3] + " " + q[5]).simplified();
+            break;
+        }
+    }
+
+    const double ramKb = readFirstMatch("/proc/meminfo", "MemTotal").split(' ').value(0).toDouble();
+    const QStorageInfo root = QStorageInfo::root();
+    const auto gb = [](qint64 bytes) { return QString::number(bytes / 1e9, 'f', 0); };
+
+    QString shell = qEnvironmentVariable("SHELL");
+    shell = shell.mid(shell.lastIndexOf('/') + 1);
+
+    QVariantList hardware{
+        row("Device name", QSysInfo::machineHostName()),
+        row("Processor", cpu),
+        row("Graphics", gpu),
+        row("Memory", ramKb > 0 ? QString::number(ramKb / 1048576.0, 'f', 1) + " GB" : QString()),
+        row("Disk", root.isValid() ? gb(root.bytesTotal() - root.bytesAvailable()) + " / " + gb(root.bytesTotal()) + " GB" : QString()),
+    };
+    QVariantList system{
+        row("Operating system", QSysInfo::prettyProductName()),
+        row("Kernel", QSysInfo::kernelVersion()),
+        row("Desktop", qEnvironmentVariable("XDG_CURRENT_DESKTOP")),
+        row("Shell", shell),
+        row("Uptime", uptimeText()),
+    };
+    return {{"version", version}, {"base", base}, {"hardware", hardware}, {"system", system}};
+}
+
+void Backend::openUrl(const QString& url) {
+    // the window must not become a way to open arbitrary links: only the project's own pages
+    if (url.startsWith("https://github.com/kyka-zavr/Infinity-hyperland"))
+        QDesktopServices::openUrl(QUrl(url));
 }

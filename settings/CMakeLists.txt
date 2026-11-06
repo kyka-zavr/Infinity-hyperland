@@ -32,7 +32,7 @@ qt_add_qml_module(infinity-settings
   QML_FILES
     qml/Main.qml qml/Style.qml qml/Btn.qml qml/Toggle.qml qml/Segmented.qml qml/Dropdown.qml qml/Field.qml qml/Slide.qml
     qml/SettingRow.qml qml/Card.qml qml/KeyCapture.qml qml/ColorField.qml
-    qml/PageInfinity.qml qml/PageKeyboard.qml qml/PageAppearance.qml qml/PageBinds.qml qml/PageSystem.qml
+    qml/PageInfinity.qml qml/PageKeyboard.qml qml/PageAppearance.qml qml/PageBinds.qml qml/PageSystem.qml qml/PageAbout.qml
 )
 target_link_libraries(infinity-settings PRIVATE infinity_core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2)
 
