@@ -61,6 +61,12 @@ cd Infinity-hyperland
 
 [English](docs/en/) | [Русский](docs/ru/): установка, использование, устройство, обновления, лицензии, план. Заметки о релизах: [CHANGELOG.ru.md](CHANGELOG.ru.md).
 
+## Авторы
+
+- **[Ikira Studio](https://github.com/Ikira-Company)**: разработка и поддержка.
+- **[kyka-zavr](https://github.com/kyka-zavr)**: автор и руководитель проекта.
+- **[Авторы Hyprland](https://github.com/hyprwm/Hyprland)** (vaxerski и контрибьюторы hyprwm): композитор, на основе которого сделан форк.
+
 ## Лицензия
 
 BSD 3-Clause, как у Hyprland: [LICENSE](LICENSE). Copyright (c) 2022–2026 vaxerski, (c) 2026 kyka-zavr (изменения). Сторонний код и лицензии зависимостей: [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md), [docs/ru/licensing.md](docs/ru/licensing.md).

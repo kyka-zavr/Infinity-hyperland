@@ -61,6 +61,12 @@ Tested by the owner on a real Arch Linux system (login screen, real mouse and mo
 
 [English](docs/en/) | [Русский](docs/ru/): installation, usage, architecture, updates, licensing, roadmap. Release notes: [CHANGELOG.md](CHANGELOG.md).
 
+## Authors
+
+- **[Ikira Studio](https://github.com/Ikira-Company)**: development and maintenance.
+- **[kyka-zavr](https://github.com/kyka-zavr)**: author and project lead.
+- **[Hyprland authors](https://github.com/hyprwm/Hyprland)** (vaxerski and the hyprwm contributors): the compositor this fork is built on.
+
 ## License
 
 BSD 3-Clause, same as Hyprland: [LICENSE](LICENSE). Copyright (c) 2022-2026 vaxerski, (c) 2026 kyka-zavr (modifications). Third-party code and dependency licenses: [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md), [docs/en/licensing.md](docs/en/licensing.md).
