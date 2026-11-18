@@ -17,6 +17,14 @@ Version scheme: `v<Hyprland version>-infinity.<n>`. Every release notes page als
 - **About page in the settings** (last in the list): logo, installed version and the Hyprland base, an **Updates** card with **Changelog**, **Check** and **Update** buttons, hardware (device name, processor, graphics, memory, disk), system (OS, kernel, desktop, shell, uptime) and a link to the project on GitHub.
 - The **Update** button opens a terminal that runs `infinity-update run`: it downloads the release into `~/.local/share/infinity-hyprland/src`, runs `install.sh` (asks for the sudo password) and keeps your configs.
 
+## v0.57.2-infinity.1 (2026-11-18)
+
+The fork is rebased onto Hyprland **v0.57.2**. All features of the fork (the Infinity canvas, the window switcher, the keyboard policy, the settings window, the installer) are unchanged: the merge touched only the files upstream changed, and the fork's own modules needed no changes. The build has no new dependencies.
+
+### Changed
+
+- Base: Hyprland **v0.57.2** (upstream fixes across protocols, rendering and the scrolling layout, DMABUF feedback tests, XDG activation, `start-hyprland`).
+
 ## v0.57.0-infinity.3.1 (2026-11-03)
 
 ### Added
